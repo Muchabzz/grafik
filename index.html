@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#d71920">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Grafik">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<title>Grafik Pracy</title>
+<style>
+  :root {
+    --bg:#071a33; --surface:#ffffff; --surface2:#f3f6fb; --accent:#d71920;
+    --green:#00843d; --yellow:#f9ca24; --text:#10233f; --text2:#52677d;
+    --border:#c8d2df; --radius:10px;
+    --shiftD:#f9ca24; --shiftN:#ce93d8; --shift8:#4fc3f7; --shift7:#a5d6a7; --shift19:#ff9a6c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  header{background:linear-gradient(135deg,#d71920,#071a33);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(7,26,51,.35)}
+  header h1{font-size:1.3rem;font-weight:700;letter-spacing:1px}
+  header span{font-size:1.6rem}
+  .container{max-width:1250px;margin:0 auto;padding:16px}
+  .tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .tab{padding:8px 18px;border-radius:20px;border:2px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:.88rem;font-weight:600;transition:all .2s}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tab:hover:not(.active){border-color:var(--accent);color:var(--text)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+  .card h2{font-size:1rem;font-weight:700;margin-bottom:14px;color:var(--accent);letter-spacing:.5px}
+  .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+  input[type=text],input[type=number],select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:.9rem;flex:1;min-width:120px;outline:none;transition:border-color .2s}
+  .max-shifts-field{width:96px;flex:0 0 96px}
+  .max-shifts-field input{width:100%;min-width:0;flex:none;padding:8px 8px}
+  input:focus,select:focus{border-color:var(--accent)}
+  label{font-size:.8rem;color:var(--text2);display:block;margin-bottom:4px}
+  .btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:.85rem;transition:all .15s}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:#b51218;transform:translateY(-1px)}
+  .btn-danger{background:#d71920;color:#fff;font-size:.78rem;padding:6px 10px}
+  .btn-success{background:#071a33;color:#fff}
+  .btn-success:hover{background:#0b274c}
+  .btn-small{font-size:.74rem;padding:5px 9px}
+
+  .emp-item{background:var(--surface2);border-radius:var(--radius);padding:14px;margin-bottom:10px;border-left:4px solid var(--accent);transition:border-color .2s}
+  .emp-item.manual-mode{border-left-color:#d71920}
+  .emp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+  .emp-name-lbl{font-weight:700;font-size:1rem}
+  .emp-details{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .avail-group,.shift-type-group{display:flex;gap:6px;flex-wrap:wrap}
+  .avail-btn,.stype-btn,.day-btn{padding:5px 12px;border-radius:16px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:.8rem;font-weight:600;transition:all .15s}
+  .avail-btn.sel-always{background:var(--surface2);border-color:var(--text2);color:var(--text)}
+  .avail-btn.sel-weekday{background:rgba(67,233,123,.15);border-color:var(--green);color:var(--green)}
+  .avail-btn.sel-weekend{background:rgba(249,202,36,.15);border-color:var(--yellow);color:var(--yellow)}
+  .stype-btn.sel-DN {background:rgba(249,202,36,.15);border-color:var(--shiftD);color:var(--shiftD)}
+  .stype-btn.sel-8  {background:rgba(79,195,247,.15);border-color:var(--shift8);color:var(--shift8)}
+  .stype-btn.sel-7  {background:rgba(165,214,167,.15);border-color:var(--shift7);color:var(--shift7)}
+  .stype-btn.sel-19 {background:rgba(255,154,108,.15);border-color:var(--shift19);color:var(--shift19)}
+  .stype-btn.sel-CUSTOM {background:rgba(215,25,32,.12);border-color:var(--accent);color:var(--accent)}
+
+  .manual-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 12px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:.8rem;font-weight:600;transition:all .15s;user-select:none}
+  .manual-toggle.active{border-color:#d71920;background:rgba(215,25,32,.1);color:#d71920}
+  .mtog-icon{font-size:1rem}
+
+  .calendar-picker{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:8px;max-width:360px}
+  .calendar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;color:var(--text2);font-size:.82rem}
+  .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-label{text-align:center;color:var(--text2);font-size:.68rem;padding:3px}
+  .cal-day{height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:.78rem;font-weight:700}
+  .cal-day:hover{border-color:var(--accent)}
+  .cal-day.off{background:#ffe3e5;border-color:#d71920;color:#a70f16}
+  .cal-day.empty{visibility:hidden}
+  .cal-help{color:var(--text2);font-size:.72rem;margin-top:7px;line-height:1.4}
+
+  .weekdays-box{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+  .day-btn.active{border-color:var(--accent);background:rgba(215,25,32,.1);color:var(--accent)}
+
+  .month-picker{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+  .month-picker select,.month-picker input{max-width:140px}
+  .schedule-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table.sched{border-collapse:collapse;min-width:600px;width:100%;font-size:.75rem}
+  table.sched th,table.sched td{border:1px solid var(--border);padding:4px 3px;text-align:center;white-space:nowrap}
+  table.sched th{background:var(--surface2);color:var(--text2);font-weight:600}
+  table.sched th.day-sun,table.sched td.day-sun{background:rgba(215,25,32,.08)}
+  table.sched th.day-sat,table.sched td.day-sat{background:rgba(7,26,51,.08)}
+  table.sched th.day-fri,table.sched td.day-fri{background:rgba(255,154,108,.06)}
+  table.sched td.emp-name-cell{text-align:left;padding-left:8px;font-weight:600;min-width:110px;background:var(--surface2);position:sticky;left:0;z-index:2}
+  table.sched td.emp-name-cell.is-manual{background:#fff1f2}
+  table.sched select.shift-sel{background:transparent;border:none;color:var(--text);font-size:.75rem;padding:0;cursor:pointer;width:48px;text-align:center;font-weight:700}
+  table.sched td.manual-cell{background:repeating-linear-gradient(45deg,#fff5f5,#fff5f5 4px,#ffe8ea 4px,#ffe8ea 8px)}
+  table.sched input.manual-input,table.sched select.manual-input{background:transparent;border:none;color:#a70f16;font-size:.75rem;font-weight:700;width:42px;text-align:center;outline:none;padding:0;cursor:pointer}
+  table.sched tr.counter-row td{font-size:.65rem;color:var(--text2);padding:2px 3px;background:var(--surface)}
+  table.sched tr.counter-row td.ok{color:var(--green)}
+  table.sched tr.counter-row td.warn{color:#d71920;font-weight:700}
+
+  .shift-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .shift-label{display:inline-flex;align-items:center;justify-content:center;width:42px;height:36px;border-radius:8px;font-weight:900;font-size:.92rem}
+  .info-box{background:#f6f9fd;border:1px solid rgba(215,25,32,.28);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;color:var(--text2);line-height:1.7}
+  .info-box strong{color:var(--text)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:.78rem}
+  .legend-dot{width:14px;height:14px;border-radius:3px}
+  .page{display:none}
+  .page.active{display:block}
+  .empty-state{text-align:center;padding:30px;color:var(--text2);font-size:.9rem}
+  @media(max-width:500px){header h1{font-size:1rem}.tab{padding:6px 12px;font-size:.8rem}}
+</style>
+</head>
+<body>
+<header>
+  <span>📅</span>
+  <h1>GRAFIK PRACY</h1>
+</header>
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('employees',this)">👥 Pracownicy</button>
+    <button class="tab" onclick="showPage('shifts',this)">⏰ Zmiany</button>
+    <button class="tab" onclick="showPage('schedule',this)">📊 Grafik</button>
+    <button class="tab" onclick="showPage('history',this);renderHistory()">🕘 Historia</button>
+  </div>
+
+  <div id="page-employees" class="page active">
+    <div class="card">
+      <h2>➕ Dodaj pracownika</h2>
+      <div class="info-box">
+        Generator nie trzyma już sztywnego cyklu <strong>D/N/X/X</strong>. Układa grafik tak, żeby każdego dnia były <strong>2 osoby na D</strong> i <strong>2 osoby na N</strong>, a zmiany rozłożyły się możliwie równo między pracowników. Dla pracowników <strong>D/N</strong> pilnuje maksymalnie dwóch nocek pod rząd; wyjątkiem są osoby ustawione jako <strong>Tylko N</strong>.<br>
+        Dla zwykłego <strong>D/N</strong> pracownik jest dostępny we wszystkie dni. Dni tygodnia ograniczają tylko <strong>Tylko D</strong>, <strong>Tylko N</strong> oraz zmiany <strong>8 / 7 / 19 / własne</strong>. Dni wolne klikasz w kalendarzu.
+      </div>
+      <div class="form-row">
+        <div style="flex:1;min-width:180px">
+          <label>Imię i nazwisko</label>
+          <input type="text" id="new-emp-name" placeholder="np. Anna Kowalska" onkeydown="if(event.key==='Enter')addEmployee()">
+        </div>
+        <div>
+          <label>Dostępność</label>
+          <div class="avail-group" id="new-avail-group">
+            <button class="avail-btn sel-always" data-val="always"  onclick="selectAvail(this,'new-avail-group')">Zawsze</button>
+            <button class="avail-btn"            data-val="weekday" onclick="selectAvail(this,'new-avail-group')">Tylko tydzień</button>
+            <button class="avail-btn"            data-val="weekend" onclick="selectAvail(this,'new-avail-group')">Tylko weekend</button>
+          </div>
+        </div>
+        <div style="align-self:flex-end">
+          <label>Tryb ręczny</label>
+          <label class="manual-toggle" id="new-manual-toggle" onclick="toggleNewManual()">
+            <span class="mtog-icon">✏️</span> Ręczny grafik
+          </label>
+        </div>
+      </div>
+      <div class="form-row" style="gap:16px">
+        <div>
+          <label>Typ zmiany</label>
+          <div class="shift-type-group" id="new-stype-group"></div>
+        </div>
+        <div style="min-width:260px">
+          <label>Dni pracy dla Tylko D / Tylko N albo stałej zmiany</label>
+          <div class="weekdays-box" id="new-fixed-days"></div>
+        </div>
+        <div class="max-shifts-field">
+          <label>Maks. zmian</label>
+          <input type="number" id="new-max-shifts" min="0" placeholder="brak" onchange="newMaxShifts=this.value">
+        </div>
+        <button class="btn btn-primary" style="align-self:flex-end" onclick="addEmployee()">Dodaj</button>
+      </div>
+      <div class="form-row" style="margin-top:6px">
+        <div>
+          <label>Miesiąc kalendarza dni wolnych</label>
+          <select id="emp-cal-month" onchange="syncCalendarDateFromEmployeePage()">
+            <option value="0">Styczeń</option><option value="1">Luty</option><option value="2">Marzec</option>
+            <option value="3">Kwiecień</option><option value="4">Maj</option><option value="5">Czerwiec</option>
+            <option value="6">Lipiec</option><option value="7">Sierpień</option><option value="8">Wrzesień</option>
+            <option value="9">Październik</option><option value="10">Listopad</option><option value="11">Grudzień</option>
+          </select>
+        </div>
+        <div>
+          <label>Rok kalendarza dni wolnych</label>
+          <input type="number" id="emp-cal-year" min="2020" max="2040" onchange="syncCalendarDateFromEmployeePage()">
+        </div>
+      </div>
+      <div class="calendar-picker" id="new-days-calendar"></div>
+    </div>
+
+    <div class="card">
+      <h2>👤 Lista pracowników</h2>
+      <div id="emp-list"><div class="empty-state">Brak pracowników.</div></div>
+    </div>
+  </div>
+
+  <div id="page-shifts" class="page">
+    <div class="card">
+      <h2>⚙️ Godziny zmian</h2>
+      <div class="shift-row">
+        <div class="shift-label" style="background:rgba(249,202,36,.2);color:var(--shiftD)">D</div>
+        <span style="color:var(--text2);font-size:.85rem">Dzień: <strong style="color:var(--text)">7:00–19:00</strong></span>
+      </div>
+      <div class="shift-row">
+        <div class="shift-label" style="background:rgba(206,147,216,.2);color:var(--shiftN)">N</div>
+        <span style="color:var(--text2);font-size:.85rem">Noc: <strong style="color:var(--text)">19:00–7:00</strong></span>
+      </div>
+      <hr style="border-color:var(--border);margin:14px 0">
+      <div id="custom-shifts-list"></div>
+      <button class="btn btn-primary" onclick="saveShifts()" style="margin-top:10px">💾 Zapisz zmiany</button>
+      <button class="btn btn-success" onclick="addCustomShift()" style="margin-top:10px">➕ Dodaj własną zmianę</button>
+      <span id="shifts-saved" style="color:var(--green);font-size:.82rem;margin-left:10px;display:none">✓ Zapisano!</span>
+    </div>
+    <div class="card">
+      <h2>📖 Zasady obsady</h2>
+      <div class="info-box">
+        <strong>Pn–Czw:</strong> 2 osoby na D + 2 osoby na N<br>
+        <strong>Pt–Nd:</strong> 2 osoby na D + 2 osoby na N + 1 osoba na zmianę 7<br>
+        Grafik nie trzyma sztywnego cyklu D/N/X/X. Najważniejsze zasady to obsada zmian, brak zmiany <strong>D</strong> od razu po <strong>N</strong> i maksymalnie dwie <strong>N</strong> pod rząd dla pracowników <strong>D/N</strong>. Jeśli jest wybór, generator zostawia dwa wolne po <strong>N</strong>.<br>
+        Zmiana <strong>7</strong> jest dodawana automatycznie tylko Pt–Nd. Jeśli ustawisz pracownikowi typ <strong>7</strong> i zaznaczysz dni, może dostać ją także poza weekendem.<br>
+        Zmiany stałe i własne są dodawane tylko w wybrane dni tygodnia danego pracownika.
+      </div>
+      <div class="legend" id="legend-dynamic"></div>
+    </div>
+  </div>
+
+  <div id="page-schedule" class="page">
+    <div class="card">
+      <h2>📅 Wybierz miesiąc</h2>
+      <div class="month-picker">
+        <div>
+          <label>Miesiąc</label>
+          <select id="sel-month" onchange="syncCalendarDateFromSchedulePage()">
+            <option value="0">Styczeń</option><option value="1">Luty</option><option value="2">Marzec</option>
+            <option value="3">Kwiecień</option><option value="4">Maj</option><option value="5">Czerwiec</option>
+            <option value="6">Lipiec</option><option value="7">Sierpień</option><option value="8">Wrzesień</option>
+            <option value="9">Październik</option><option value="10">Listopad</option><option value="11">Grudzień</option>
+          </select>
+        </div>
+        <div>
+          <label>Rok</label>
+          <input type="number" id="sel-year" value="2026" min="2020" max="2040" onchange="syncCalendarDateFromSchedulePage()">
+        </div>
+        <button class="btn btn-primary" onclick="buildSchedule()" style="align-self:flex-end">Generuj grafik</button>
+        <button class="btn btn-success" onclick="exportExcel()" style="align-self:flex-end">⬇ Pobierz Excel</button>
+      </div>
+      <div class="info-box" style="margin-bottom:0;font-size:.82rem">
+        Po zmianie pracowników albo dni wolnych najlepiej wygenerować grafik ponownie. Generator nadpisuje dany miesiąc od nowa, żeby równo rozłożyć zmiany.
+      </div>
+    </div>
+    <div class="card" id="schedule-card" style="display:none">
+      <h2 id="schedule-title">Grafik</h2>
+      <div class="schedule-table-wrap">
+        <table class="sched" id="sched-table"></table>
+      </div>
+      <div class="legend" id="schedule-legend"></div>
+    </div>
+  </div>
+
+  <div id="page-history" class="page">
+    <div class="card">
+      <h2>🕘 Historia grafików</h2>
+      <div class="info-box">
+        Każdy wygenerowany grafik zapisuje się tutaj osobno. Możesz wrócić do starszego grafiku, podejrzeć go albo usunąć z historii.
+      </div>
+      <div id="history-list"><div class="empty-state">Brak zapisanych grafików.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let employees    = JSON.parse(localStorage.getItem('grafik_emp5')    || '[]');
+let scheduleData = JSON.parse(localStorage.getItem('grafik_sched5')  || '{}');
+let shifts       = JSON.parse(localStorage.getItem('grafik_shifts5') || 'null') || {
+  '8':{code:'8', from:'8:00', to:'16:00', color:'#4fc3f7'},
+  '7':{code:'7', from:'7:00', to:'15:00', color:'#a5d6a7'},
+  '19':{code:'19', from:'19:00', to:'1:00', color:'#ff9a6c'}
+};
+let currentMonth=null, currentYear=null;
+let newAvail='always', newStype='DN', newManual=false, newDaysOff=[], newFixedDays=defaultFixedDays(), newMaxShifts='';
+
+function saveEmp(){ localStorage.setItem('grafik_emp5', JSON.stringify(employees)); }
+function saveSched(){ localStorage.setItem('grafik_sched5', JSON.stringify(scheduleData)); }
+function saveShiftStore(){ localStorage.setItem('grafik_shifts5', JSON.stringify(shifts)); }
+
+const DAYS_PL=['Nd','Pn','Wt','Śr','Cz','Pt','Sb'];
+const MONTHS_PL=['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+const WEEKDAY_ORDER=[1,2,3,4,5,6,0];
+const WEEKDAY_NAMES={1:'Pn',2:'Wt',3:'Śr',4:'Cz',5:'Pt',6:'Sb',0:'Nd'};
+function defaultFixedDays(){ return [1,2,3,4,5,6,0]; }
+function normalizeFixedDays(days){ return Array.isArray(days) && days.length ? days : defaultFixedDays(); }
+
+function showPage(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+  if(name==='employees') renderNewCalendar();
+}
+
+function getDaysInMonth(y,m){
+  y=parseInt(y,10);
+  m=parseInt(m,10);
+  const monthDays=[31,28,31,30,31,30,31,31,30,31,30,31];
+  const leap=(y%4===0 && y%100!==0) || (y%400===0);
+  if(m===1) return leap ? 29 : 28;
+  return monthDays[m] || 31;
+}
+function getDow(y,m,d){return new Date(y,m,d).getDay();}
+function isWeekend(dow){return dow===0||dow===6;}
+function isFriSatSun(dow){return dow===5||dow===6||dow===0;}
+function isAvailable(emp,dow){
+  const a=emp.availability||'always';
+  if(a==='weekday') return !isWeekend(dow);
+  if(a==='weekend') return isWeekend(dow);
+  return true;
+}
+function isFixedShift(code){ return code && code!=='DN' && code!=='ONLY_N' && code!=='ONLY_D'; }
+function escapeHtml(v){ return String(v).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
+
+function selectAvail(btn,groupId){
+  document.getElementById(groupId).querySelectorAll('.avail-btn').forEach(b=>b.classList.remove('sel-always','sel-weekday','sel-weekend'));
+  btn.classList.add('sel-'+btn.dataset.val);
+  if(groupId==='new-avail-group') newAvail=btn.dataset.val;
+}
+function selectStype(btn,groupId){
+  document.getElementById(groupId).querySelectorAll('.stype-btn').forEach(b=>b.classList.remove('sel-DN','sel-8','sel-7','sel-19','sel-CUSTOM'));
+  const code=btn.dataset.val;
+  btn.classList.add(['8','7','19'].includes(code)?'sel-'+code:(code==='DN'?'sel-DN':'sel-CUSTOM'));
+  if(groupId==='new-stype-group') newStype=code;
+}
+function toggleNewManual(){
+  newManual=!newManual;
+  document.getElementById('new-manual-toggle').classList.toggle('active',newManual);
+}
+
+function getSelectedMonthYear(){
+  const empMonth=document.getElementById('emp-cal-month');
+  const empYear=document.getElementById('emp-cal-year');
+  if(empMonth && empYear && empMonth.value!=='' && empYear.value!==''){
+    return {month:parseInt(empMonth.value,10), year:parseInt(empYear.value,10)};
+  }
+  return {month:parseInt(document.getElementById('sel-month').value,10), year:parseInt(document.getElementById('sel-year').value,10)};
+}
+
+function syncCalendarDateFromEmployeePage(){
+  const m=document.getElementById('emp-cal-month').value;
+  const y=document.getElementById('emp-cal-year').value;
+  document.getElementById('sel-month').value=m;
+  document.getElementById('sel-year').value=y;
+  autoResetForNewMonth();
+  renderNewCalendar();
+  renderEmployees();
+}
+
+function syncCalendarDateFromSchedulePage(){
+  const empMonth=document.getElementById('emp-cal-month');
+  const empYear=document.getElementById('emp-cal-year');
+  if(empMonth) empMonth.value=document.getElementById('sel-month').value;
+  if(empYear) empYear.value=document.getElementById('sel-year').value;
+  autoResetForNewMonth();
+  renderNewCalendar();
+  renderEmployees();
+}
+function toggleArrayValue(arr,val){
+  const i=arr.indexOf(val);
+  if(i>=0) arr.splice(i,1); else arr.push(val);
+  arr.sort((a,b)=>a-b);
+}
+function renderWeekdayButtons(containerId, selectedDays, onClickName, empId=null){
+  const box=document.getElementById(containerId);
+  box.innerHTML=WEEKDAY_ORDER.map(d=>`<button class="day-btn ${selectedDays.includes(d)?'active':''}" onclick="${onClickName}(${empId!==null?empId+',':''}${d})">${WEEKDAY_NAMES[d]}</button>`).join('');
+}
+function toggleNewFixedDay(d){ toggleArrayValue(newFixedDays,d); renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay'); }
+function toggleEmpFixedDay(id,d){
+  const e=employees.find(x=>x.id===id); if(!e)return;
+  e.fixedDays=normalizeFixedDays(e.fixedDays);
+  toggleArrayValue(e.fixedDays,d); saveEmp(); renderEmployees();
+}
+
+function renderNewCalendar(){ renderCalendar('new-days-calendar', newDaysOff, 'toggleNewDayOff'); }
+function toggleNewDayOff(day){ toggleArrayValue(newDaysOff,day); renderNewCalendar(); }
+function toggleEmpDayOff(id,day){
+  const e=employees.find(x=>x.id===id); if(!e)return;
+  if(!Array.isArray(e.daysOff)) e.daysOff=[];
+  toggleArrayValue(e.daysOff,day); saveEmp(); renderEmployees();
+}
+function renderCalendar(containerId, daysOff, callbackName, empId=null){
+  const {month,year}=getSelectedMonthYear();
+  const days=getDaysInMonth(year,month);
+  const firstDow=getDow(year,month,1);
+  const mondayIndex=(firstDow+6)%7;
+  let html=`<div class="calendar-head"><strong>${MONTHS_PL[month]} ${year} — ${days} dni</strong><span>Kliknij dzień wolny/urlop</span></div>`;
+  html+='<div class="calendar-grid">';
+  ['Pn','Wt','Śr','Cz','Pt','Sb','Nd'].forEach(x=>html+=`<div class="cal-label">${x}</div>`);
+  for(let i=0;i<mondayIndex;i++) html+='<button class="cal-day empty"></button>';
+  for(let d=1;d<=days;d++){
+    const off=daysOff.includes(d);
+    html+=`<button class="cal-day ${off?'off':''}" onclick="${callbackName}(${empId!==null?empId+',':''}${d})">${d}</button>`;
+  }
+  html+='</div><div class="cal-help">Czerwone dni to dni wolne/urlop. Kalendarz pokazuje miesiąc wybrany w zakładce „Grafik”.</div>';
+  document.getElementById(containerId).innerHTML=html;
+}
+
+function renderShiftTypeButtons(){
+  const box=document.getElementById('new-stype-group');
+  const codes=['DN','ONLY_D','ONLY_N',...Object.keys(shifts)];
+  box.innerHTML=codes.map(code=>{
+    const cls=code==='DN'?'sel-DN':(code==='ONLY_N'||code==='ONLY_D')?'sel-CUSTOM':(['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM');
+    return `<button class="stype-btn ${newStype===code?cls:''}" data-val="${code}" onclick="selectStype(this,'new-stype-group')">${code==='DN'?'D/N':code==='ONLY_N'?'Tylko N':code==='ONLY_D'?'Tylko D':escapeHtml(code)}</button>`;
+  }).join('');
+}
+
+function addEmployee(){
+  const name=document.getElementById('new-emp-name').value.trim();
+  if(!name){alert('Wpisz imię!');return;}
+  employees.push({
+    id:Date.now(), name, daysOff:[...newDaysOff], availability:newAvail,
+    shiftType:newStype, fixedDays:[...newFixedDays], manual:newManual,
+    stats:{D:0,N:0,'7':0,total:0}
+  });
+  saveEmp(); renderEmployees();
+  document.getElementById('new-emp-name').value='';
+  newDaysOff=[]; newAvail='always'; newStype='DN'; newManual=false; newFixedDays=defaultFixedDays();
+  document.getElementById('new-avail-group').querySelectorAll('.avail-btn').forEach((b,i)=>{b.classList.remove('sel-always','sel-weekday','sel-weekend');if(i===0)b.classList.add('sel-always');});
+  document.getElementById('new-manual-toggle').classList.remove('active');
+  renderShiftTypeButtons(); renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay'); renderNewCalendar();
+}
+function deleteEmployee(id){
+  if(!confirm('Usunąć pracownika?'))return;
+  employees=employees.filter(e=>e.id!==id); saveEmp(); renderEmployees();
+}
+function setEmpAvail(id,v){const e=employees.find(e=>e.id===id);if(e){e.availability=v;saveEmp();renderEmployees();}}
+function setEmpStype(id,v){const e=employees.find(e=>e.id===id);if(e){e.shiftType=v; e.fixedDays=normalizeFixedDays(e.fixedDays); saveEmp();renderEmployees();}}
+function toggleManual(id){const e=employees.find(e=>e.id===id);if(e){e.manual=!e.manual;saveEmp();renderEmployees();}}
+
+function renderEmployees(){
+  const list=document.getElementById('emp-list');
+  if(!employees.length){list.innerHTML='<div class="empty-state">Brak pracowników.</div>';return;}
+  list.innerHTML=employees.map(emp=>{
+    const av=emp.availability||'always', st=emp.shiftType||'DN', mn=!!emp.manual;
+    const fixedDays=normalizeFixedDays(emp.fixedDays);
+    const stColor=st==='DN'?'var(--shiftD)':getShiftColor(st);
+    const fixedBoxId=`fd-${emp.id}`;
+    const calId=`cal-${emp.id}`;
+    const stButtons=['DN','ONLY_D','ONLY_N',...Object.keys(shifts)].map(code=>{
+      const sel=st===code;
+      const cls=code==='DN'?'sel-DN':(code==='ONLY_N'||code==='ONLY_D')?'sel-CUSTOM':(['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM');
+      const label=code==='DN'?'D/N':code==='ONLY_N'?'Tylko N':code==='ONLY_D'?'Tylko D':escapeHtml(code);
+      return `<button class="stype-btn ${sel?cls:''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${label}</button>`;
+    }).join('');
+    setTimeout(()=>{ if(document.getElementById(fixedBoxId)) renderWeekdayButtons(fixedBoxId,fixedDays,'toggleEmpFixedDay',emp.id); if(document.getElementById(calId)) renderCalendar(calId,emp.daysOff||[],'toggleEmpDayOff',emp.id); },0);
+    return `<div class="emp-item${mn?' manual-mode':''}">
+      <div class="emp-header">
+        <span class="emp-name-lbl">${mn?'✏️':'👤'} ${escapeHtml(emp.name)}</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label class="manual-toggle${mn?' active':''}" onclick="toggleManual(${emp.id})"><span class="mtog-icon">✏️</span> Ręczny</label>
+          <button class="btn btn-danger" onclick="deleteEmployee(${emp.id})">Usuń</button>
+        </div>
+      </div>
+      <div class="emp-details">
+        <div>
+          <label>Dostępność</label>
+          <div class="avail-group" id="ag-${emp.id}">
+            <button class="avail-btn ${av==='always'?'sel-always':''}" onclick="setEmpAvail(${emp.id},'always')">Zawsze</button>
+            <button class="avail-btn ${av==='weekday'?'sel-weekday':''}" onclick="setEmpAvail(${emp.id},'weekday')">Tylko tydzień</button>
+            <button class="avail-btn ${av==='weekend'?'sel-weekend':''}" onclick="setEmpAvail(${emp.id},'weekend')">Tylko weekend</button>
+          </div>
+        </div>
+        <div>
+          <label>Typ zmiany</label>
+          <div class="shift-type-group" id="sg-${emp.id}">${stButtons}
+          <div style="font-size:.7rem;color:var(--text2);margin-top:4px">Możesz ustawić pracownika tylko na nocne zmiany (Tylko N)</div>
+        </div>
+        </div>
+        <div style="min-width:260px">
+          <label>Dni pracy dla Tylko D / Tylko N albo stałej zmiany <span style="color:${stColor};font-weight:700">${st==='ONLY_N'?'Tylko N':st==='ONLY_D'?'Tylko D':escapeHtml(st)}</span></label>
+          <div class="weekdays-box" id="${fixedBoxId}"></div>
+          <div style="color:var(--text2);font-size:.7rem;margin-top:4px">Dla D/N generator bierze wszystkie dni tygodnia. Te przyciski ograniczają tylko Tylko D, Tylko N i stałe zmiany.</div>
+        </div>
+      </div>
+      <div class="calendar-picker" id="${calId}"></div>
+    </div>`;
+  }).join('');
+}
+
+function getShiftColor(code){
+  if(code==='D')return'var(--shiftD)';
+  if(code==='N')return'var(--shiftN)';
+  if(code==='ONLY_D')return'var(--shiftD)';
+  if(code==='ONLY_N')return'var(--shiftN)';
+  if(code==='X')return'#071a33';
+  if(code==='U')return'#aaaaaa';
+  if(shifts[code])return shifts[code].color || 'var(--accent)';
+  return 'var(--text2)';
+}
+function cellColor(v){return getShiftColor(v);}
+
+function addCustomShift(){
+  let code=prompt('Podaj nazwę/kod zmiany, np. 10, 12, POMOC');
+  if(!code)return;
+  code=code.trim().toUpperCase();
+  if(['D','N','X','U','DN','ONLY_D','ONLY_N'].includes(code)){alert('Ten kod jest zarezerwowany.');return;}
+  if(shifts[code]){alert('Taka zmiana już istnieje.');return;}
+  shifts[code]={code,from:'9:00',to:'17:00',color:'#d71920'};
+  saveShiftStore(); renderShiftsUI(); renderShiftTypeButtons(); renderEmployees(); updateDynamicLegends();
+}
+function deleteCustomShift(code){
+  if(['8','7','19'].includes(code)){alert('Tych podstawowych zmian nie usuwam, możesz zmienić ich godziny.');return;}
+  if(!confirm('Usunąć zmianę '+code+'?'))return;
+  delete shifts[code];
+  employees.forEach(e=>{ if(e.shiftType===code)e.shiftType='DN'; });
+  saveShiftStore(); saveEmp(); renderShiftsUI(); renderShiftTypeButtons(); renderEmployees(); updateDynamicLegends();
+}
+function renderShiftsUI(){
+  const box=document.getElementById('custom-shifts-list');
+  box.innerHTML=Object.keys(shifts).map(code=>{
+    const sh=shifts[code];
+    return `<div class="shift-row">
+      <div class="shift-label" style="background:${sh.color}33;color:${sh.color}">${escapeHtml(code)}</div>
+      <div><label>kod</label><input type="text" value="${escapeHtml(code)}" disabled style="width:80px"></div>
+      <div><label>od</label><input type="text" id="shift-${code}-from" value="${escapeHtml(sh.from)}" style="width:80px"></div>
+      <div><label>do</label><input type="text" id="shift-${code}-to" value="${escapeHtml(sh.to)}" style="width:80px"></div>
+      <div><label>kolor</label><input type="text" id="shift-${code}-color" value="${escapeHtml(sh.color)}" style="width:100px"></div>
+      <button class="btn btn-danger btn-small" onclick="deleteCustomShift('${code}')">Usuń</button>
+    </div>`;
+  }).join('');
+}
+function saveShifts(){
+  Object.keys(shifts).forEach(code=>{
+    shifts[code].from=document.getElementById(`shift-${code}-from`).value;
+    shifts[code].to=document.getElementById(`shift-${code}-to`).value;
+    shifts[code].color=document.getElementById(`shift-${code}-color`).value || '#d71920';
+  });
+  saveShiftStore(); renderShiftsUI(); renderShiftTypeButtons(); renderEmployees(); updateDynamicLegends();
+  const s=document.getElementById('shifts-saved');s.style.display='inline';setTimeout(()=>s.style.display='none',2000);
+}
+function updateDynamicLegends(){
+  const base=`
+    <div class="legend-item"><div class="legend-dot" style="background:var(--shiftD)"></div><span><b>D</b> = 7:00–19:00</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--shiftN)"></div><span><b>N</b> = 19:00–7:00</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#071a33;border:1px solid #c8d2df"></div><span><b>X</b> = wolne</span></div>`;
+  const custom=Object.keys(shifts).map(code=>`<div class="legend-item"><div class="legend-dot" style="background:${shifts[code].color}"></div><span><b>${escapeHtml(code)}</b> = ${escapeHtml(shifts[code].from)}–${escapeHtml(shifts[code].to)}</span></div>`).join('');
+  const end=`<div class="legend-item"><div class="legend-dot" style="background:#aaa"></div><span><b>U</b> = urlop</span></div>`;
+  const html=base+custom+end;
+  document.getElementById('legend-dynamic').innerHTML=html;
+  document.getElementById('schedule-legend').innerHTML=html;
+}
+
+function pickBalanced(candidates, key, dayAssignments, preferNoPrevNight=false){
+  if(dayAssignments){
+    const shiftTypeFor=(emp)=>{
+      if(dayAssignments.key) return getMonthSetting(emp,dayAssignments.key).shiftType || 'DN';
+      return emp.shiftType || 'DN';
+    };
+    const isNightOnly=(emp)=>shiftTypeFor(emp)==='ONLY_N';
+    if(key==='N'){
+      const noThirdNight=candidates.filter(e=>isNightOnly(e) || !(dayAssignments.prev?.[e.id]==='N' && dayAssignments.prev2?.[e.id]==='N'));
+      if(noThirdNight.length) candidates=noThirdNight;
+      const noPrevNight=candidates.filter(e=>isNightOnly(e) || dayAssignments.prev?.[e.id]!=='N');
+      if(noPrevNight.length) candidates=noPrevNight;
+      const noRecentNight=candidates.filter(e=>isNightOnly(e) || dayAssignments.prev2?.[e.id]!=='N');
+      if(noRecentNight.length) candidates=noRecentNight;
+    } else {
+      const noPrevNight=candidates.filter(e=>dayAssignments.prev?.[e.id]!=='N');
+      if(noPrevNight.length) candidates=noPrevNight;
+      const noRecentNight=candidates.filter(e=>dayAssignments.prev2?.[e.id]!=='N');
+      if(noRecentNight.length) candidates=noRecentNight;
+    }
+    if(dayAssignments.day && dayAssignments.days){
+      const paced=candidates.filter(emp=>{
+        const max=getMaxShifts(emp,dayAssignments.key||null);
+        if(max===null) return true;
+        const targetByToday=Math.max(1, Math.ceil(max * dayAssignments.day / dayAssignments.days));
+        return (emp.stats?.total||0) < targetByToday;
+      });
+      if(paced.length) candidates=paced;
+    }
+  }
+  candidates.sort((a,b)=>{
+    const as=a.stats?.[key]||0, bs=b.stats?.[key]||0;
+    const at=a.stats?.total||0, bt=b.stats?.total||0;
+    if(at!==bt)return at-bt;
+    if(as!==bs)return as-bs;
+    return a.name.localeCompare(b.name);
+  });
+  return candidates[0] || null;
+}
+function addStat(emp,shift){
+  if(!emp.stats) emp.stats={D:0,N:0,'7':0,total:0};
+  if(!emp.stats[shift]) emp.stats[shift]=0;
+  if(['D','N','7'].includes(shift)) emp.stats[shift]++;
+  if(shift!=='X'&&shift!=='U') emp.stats.total++;
+}
+function getMaxShifts(emp, monthKey=null){
+  const raw=monthKey ? getMonthSetting(emp,monthKey).maxShifts : emp.maxShifts;
+  const max=parseInt(raw,10);
+  return Number.isFinite(max) && max>0 ? max : null;
+}
+function canTakeMoreShifts(emp, monthKey=null){
+  const max=getMaxShifts(emp,monthKey);
+  if(max===null) return true;
+  return (emp.stats?.total||0) < max;
+}
+function wouldBeThirdNight(emp, ctx, monthKey=null){
+  const st=monthKey ? (getMonthSetting(emp,monthKey).shiftType||'DN') : (emp.shiftType||'DN');
+  return st!=='ONLY_N' && ctx.prev?.[emp.id]==='N' && ctx.prev2?.[emp.id]==='N';
+}
+function trimTooLongNightRuns(result, days, monthKey=null){
+  employees.forEach(emp=>{
+    const s=monthKey ? getMonthSetting(emp,monthKey) : emp;
+    if((s.shiftType||'DN')==='ONLY_N') return;
+    let run=0;
+    for(let d=1;d<=days;d++){
+      if(result[emp.id]?.[d]==='N'){
+        run++;
+        if(run>2){
+          result[emp.id][d]='X';
+        }
+      } else {
+        run=0;
+      }
+    }
+  });
+}
+
+function buildDefaultSchedule(year, month){
+  const days=getDaysInMonth(year,month);
+  const result={};
+  const stats={};
+  employees.forEach(emp=>{ result[emp.id]={}; stats[emp.id]={D:0,N:0,'7':0,total:0}; });
+
+  for(let d=1; d<=days; d++){
+    const dow=getDow(year,month,d);
+    const used=new Set();
+    const prev={}; employees.forEach(e=>{ prev[e.id]=d>1?result[e.id][d-1]:''; });
+    const prev2={}; employees.forEach(e=>{ prev2[e.id]=d>2?result[e.id][d-2]:''; });
+    const ctx={prev,prev2,day:d,days};
+
+    employees.forEach(emp=>{
+      emp.stats=stats[emp.id];
+      const off=(emp.daysOff||[]).includes(d);
+      if(emp.manual){ result[emp.id][d]=''; used.add(emp.id); return; }
+      if(off){ result[emp.id][d]='U'; used.add(emp.id); return; }
+      if(!isAvailable(emp,dow)){ result[emp.id][d]='X'; used.add(emp.id); return; }
+      if(isFixedShift(emp.shiftType)){
+        const fdays=normalizeFixedDays(emp.fixedDays);
+        if(fdays.includes(dow) && canTakeMoreShifts(emp)){
+          result[emp.id][d]=emp.shiftType; used.add(emp.id); addStat(emp,emp.shiftType);
+        }
+      }
+    });
+
+    const activeDN=employees.filter(emp=>!used.has(emp.id) && !emp.manual && (emp.shiftType||'DN')==='DN' && !(emp.daysOff||[]).includes(d) && isAvailable(emp,dow) && canTakeMoreShifts(emp));
+    const activeOnlyD=employees.filter(emp=>{
+      const fdays=normalizeFixedDays(emp.fixedDays);
+      return !used.has(emp.id) && !emp.manual && emp.shiftType==='ONLY_D' && !(emp.daysOff||[]).includes(d) && isAvailable(emp,dow) && fdays.includes(dow) && canTakeMoreShifts(emp);
+    });
+    const backupCandidates=(shift)=>employees.filter(emp=>{
+      if(used.has(emp.id) || emp.manual || (emp.daysOff||[]).includes(d) || !isAvailable(emp,dow)) return false;
+      if(!canTakeMoreShifts(emp)) return false;
+      const st=emp.shiftType||'DN';
+      const fdays=normalizeFixedDays(emp.fixedDays);
+      if((st==='ONLY_N' || st==='ONLY_D') && !fdays.includes(dow)) return false;
+      if(shift==='D' && ctx.prev[emp.id]==='N') return false;
+      if(shift==='N' && wouldBeThirdNight(emp,ctx)) return false;
+      if(st==='ONLY_N' && shift!=='N') return false;
+      if(st==='ONLY_D' && shift!=='D') return false;
+      if(isFixedShift(st) && fdays.includes(dow)) return false;
+      return true;
+    });
+
+    for(let i=0;i<2;i++){
+      const candidates=[...activeOnlyD.filter(e=>!used.has(e.id) && ctx.prev[e.id]!=='N'), ...activeDN.filter(e=>!used.has(e.id) && ctx.prev[e.id]!=='N')];
+      const emp=pickBalanced(candidates,'D',ctx,false) || pickBalanced(backupCandidates('D'),'D',ctx,false);
+      if(emp){ result[emp.id][d]='D'; used.add(emp.id); addStat(emp,'D'); }
+    }
+    for(let i=0;i<2;i++){
+      const candidates=activeDN.filter(e=>!used.has(e.id) && !wouldBeThirdNight(e,ctx));
+      const emp=pickBalanced(candidates,'N',ctx,false) || pickBalanced(backupCandidates('N'),'N',ctx,false);
+      if(emp){ result[emp.id][d]='N'; used.add(emp.id); addStat(emp,'N'); }
+    }
+    if(isFriSatSun(dow) && employees.filter(emp=>result[emp.id][d]==='7').length===0){
+      const fallbackDN=activeDN.filter(e=>!used.has(e.id));
+      const emp=pickBalanced(fallbackDN,'7',ctx,true) || pickBalanced(backupCandidates('7'),'7',ctx,true);
+      if(emp){ result[emp.id][d]='7'; used.add(emp.id); addStat(emp,'7'); }
+    }
+    employees.forEach(emp=>{ if(result[emp.id][d]===undefined) result[emp.id][d]='X'; });
+  }
+  trimTooLongNightRuns(result,days);
+  employees.forEach(e=>delete e.stats);
+  return result;
+}
+
+function buildSchedule(){
+  const month=parseInt(document.getElementById('sel-month').value,10);
+  const year=parseInt(document.getElementById('sel-year').value,10);
+  if(!employees.length){alert('Najpierw dodaj pracowników!');return;}
+  currentMonth=month; currentYear=year;
+  const days=getDaysInMonth(year,month);
+  const key=`${year}-${month}`;
+  scheduleData[key]=buildDefaultSchedule(year,month);
+  saveSched();
+  document.getElementById('schedule-title').textContent=`GRAFIK ${MONTHS_PL[month].toUpperCase()} ${year}`;
+  renderScheduleTable(year,month,days);
+  document.getElementById('schedule-card').style.display='block';
+}
+
+function getAllShiftCodes(){ return ['D','N','X','7','8','19',...Object.keys(shifts).filter(c=>!['7','8','19'].includes(c)),'U']; }
+function renderScheduleTable(year,month,days){
+  const key=`${year}-${month}`;
+  const table=document.getElementById('sched-table');
+  let html='<thead><tr><th style="text-align:left;min-width:110px;position:sticky;left:0;z-index:3;background:var(--surface2)">Pracownik</th>';
+  for(let d=1;d<=days;d++){
+    const dow=getDow(year,month,d), cls=dow===0?'day-sun':dow===6?'day-sat':dow===5?'day-fri':'';
+    html+=`<th class="${cls}">${d}<br><span style="font-size:.65rem">${DAYS_PL[dow]}</span></th>`;
+  }
+  html+='</tr></thead><tbody>';
+
+  employees.forEach(emp=>{
+    const s=getMonthSetting(emp,key);
+    const st=s.shiftType||'DN', mn=!!s.manual;
+    html+=`<tr><td class="emp-name-cell ${mn?'is-manual':''}">${mn?'✏️':''} ${escapeHtml(emp.name)}<br><span style="color:${mn?'#d71920':(st==='DN'?'var(--shiftD)':getShiftColor(st))};font-size:.65rem;font-weight:700">${mn?'':st==='ONLY_N'?'Tylko N':st==='ONLY_D'?'Tylko D':escapeHtml(st)}</span></td>`;
+    for(let d=1;d<=days;d++){
+      const dow=getDow(year,month,d), cls=dow===0?'day-sun':dow===6?'day-sat':dow===5?'day-fri':'';
+      const val=scheduleData[key]?.[emp.id]?.[d]??'';
+      const opts=getAllShiftCodes().map(code=>`<option value="${code}" ${val===code?'selected':''}>${code}</option>`).join('');
+      if(mn){
+        html+=`<td class="${cls} manual-cell"><select class="shift-sel manual-input" onchange="setShift('${key}',${emp.id},${d},this.value)" style="color:${cellColor(val)}">${opts}</select></td>`;
+      } else {
+        const bg=val==='X'?'background:#071a33;':(val==='U'?'background:#e4e9f0;':'');
+        html+=`<td class="${cls}" style="${bg}"><select class="shift-sel" onchange="setShift('${key}',${emp.id},${d},this.value)" style="color:${cellColor(val)}">${opts}</select></td>`;
+      }
+    }
+    html+='</tr>';
+  });
+
+  html+=counterRowHtml(key,days,'D','D (cel: 2)',d=>2);
+  html+=counterRowHtml(key,days,'N','N (cel: 2)',d=>2);
+  html+=counterRowHtml(key,days,'7','7 (Pt/Sb/Nd)',d=>isFriSatSun(getDow(year,month,d))?1:0);
+  html+='</tbody>';
+  table.innerHTML=html;
+}
+function counterRowHtml(key,days,shift,label,needFn){
+  let html=`<tr class="counter-row" data-shift="${shift}"><td style="text-align:left;padding-left:8px;position:sticky;left:0;background:var(--surface)">${label}</td>`;
+  for(let d=1;d<=days;d++){
+    const need=needFn(d);
+    const cnt=employees.filter(e=>!getMonthSetting(e,key).manual&&scheduleData[key]?.[e.id]?.[d]===shift).length;
+    if(need>0) html+=`<td class="${cnt===need?'ok':'warn'}">${cnt}</td>`;
+    else html+=`<td style="color:#333">${cnt>0?cnt:'—'}</td>`;
+  }
+  return html+'</tr>';
+}
+function setShift(key,empId,day,val){
+  if(!scheduleData[key])scheduleData[key]={};
+  if(!scheduleData[key][empId])scheduleData[key][empId]={};
+  scheduleData[key][empId][day]=val.trim(); saveSched();
+  const days=getDaysInMonth(currentYear,currentMonth);
+  updateCounters(key,days);
+  document.querySelectorAll('#sched-table select.shift-sel').forEach(s=>{ s.style.color=cellColor(s.value); });
+}
+function updateCounters(key,days){
+  const rows=document.querySelectorAll('#sched-table tbody tr.counter-row');
+  ['D','N','7'].forEach((shift,idx)=>{
+    const cells=rows[idx].querySelectorAll('td');
+    for(let d=1;d<=days;d++){
+      const need=shift==='7'?(isFriSatSun(getDow(currentYear,currentMonth,d))?1:0):2;
+      const cnt=employees.filter(e=>!getMonthSetting(e,key).manual&&scheduleData[key]?.[e.id]?.[d]===shift).length;
+      if(need>0){ cells[d].textContent=cnt; cells[d].className=cnt===need?'ok':'warn'; }
+      else { cells[d].textContent=cnt>0?cnt:'—'; cells[d].className=''; }
+    }
+  });
+}
+
+function exportExcel(){
+  if(currentMonth===null){alert('Najpierw wygeneruj grafik!');return;}
+  const month=currentMonth, year=currentYear, days=getDaysInMonth(year,month), key=`${year}-${month}`, monthName=MONTHS_PL[month].toUpperCase();
+  const xmlEscape=(v)=>String(v??'').replace(/[<>&"']/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[m]));
+  const validHex=(v,fallback)=>/^#[0-9a-f]{6}$/i.test(v||'') ? v : fallback;
+  const shadeHex=(hex,factor=.82)=>{
+    const h=validHex(hex,'#ffffff').slice(1);
+    const n=[0,2,4].map(i=>Math.max(0,Math.min(255,Math.round(parseInt(h.slice(i,i+2),16)*factor))));
+    return '#'+n.map(x=>x.toString(16).padStart(2,'0')).join('');
+  };
+  const exportColor=(v,weekend=false)=>{
+    let color='#ffffff';
+    if(v==='D') color='#fff36a';
+    else if(v==='N') color='#ff7fb2';
+    else if(v==='X') color='#8a8a8a';
+    else if(v==='U') color='#bfbfbf';
+    else if(v==='7') color=validHex(shifts['7']?.color,'#d7df2a');
+    else if(v==='8') color=validHex(shifts['8']?.color,'#d7df2a');
+    else if(v==='19') color=validHex(shifts['19']?.color,'#ff9a6c');
+    else if(shifts[v]) color=validHex(shifts[v].color,'#d9e1f2');
+    if(weekend && !v) return '#C9C9C9';
+    return weekend ? shadeHex(color,.78) : color;
+  };
+  const styleId=(code,weekend=false)=>'s_'+String(code||'blank').replace(/[^A-Za-z0-9_]/g,'_')+(weekend?'_we':'');
+  const dowLetter=(dow)=>({1:'P',2:'W',3:'Ś',4:'C',5:'P',6:'S',0:'N'}[dow]||'');
+  const totalForEmp=(emp)=>{
+    let total=0;
+    for(let d=1;d<=days;d++){
+      const v=scheduleData[key]?.[emp.id]?.[d] || '';
+      if(v && v!=='X' && v!=='U') total++;
+    }
+    return total;
+  };
+  const countShift=(shift,d)=>employees.filter(e=>!getMonthSetting(e,key).manual&&scheduleData[key]?.[e.id]?.[d]===shift).length;
+  const shiftCodes=[...new Set(['D','N','7','8','19',...Object.keys(shifts),'X','U',''])];
+  const border='<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders>';
+  const style=(id,color,bold=true,align='Center')=>`<Style ss:ID="${id}"><Alignment ss:Horizontal="${align}" ss:Vertical="Center"/><Font ss:FontName="Arial" ss:Size="8"${bold?' ss:Bold="1"':''}/>${border}<Interior ss:Color="${color}" ss:Pattern="Solid"/></Style>`;
+  let xml=`<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+<Style ss:ID="Default" ss:Name="Normal"><Font ss:FontName="Arial" ss:Size="8"/></Style>
+<Style ss:ID="title"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Arial" ss:Size="9" ss:Bold="1"/></Style>
+${style('emp','#E6E6E6',false,'Left')}
+${style('head','#EEEEEE')}
+${style('weekendHead','#BFBFBF')}
+${style('total','#E6E6E6')}
+${style('weekday','#EEEEEE')}
+${style('weekdayWeekend','#BFBFBF')}
+${style('counter','#F2F2F2',false)}
+${style('ok','#C6EFCE')}
+${style('bad','#FFC7CE')}
+${style('legendText','#FFFFFF',false,'Left')}
+${shiftCodes.map(code=>style(styleId(code),exportColor(code))).join('')}
+${shiftCodes.map(code=>style(styleId(code,true),exportColor(code,true))).join('')}
+</Styles>
+<Worksheet ss:Name="Grafik">
+<Table ss:DefaultRowHeight="15">
+<Column ss:Width="70"/>
+${Array.from({length:days},()=>'<Column ss:Width="17"/>').join('')}
+<Column ss:Width="22"/>`;
+  const cell=(data,styleId='Default',type='String',merge=0)=>`<Cell ss:StyleID="${styleId}"${merge?` ss:MergeAcross="${merge}"`:''}><Data ss:Type="${type}">${xmlEscape(data)}</Data></Cell>`;
+  xml+=`<Row ss:Height="18">${cell(`GRAFIK ${monthName} ${year}`,'title','String',days+1)}</Row>`;
+  xml+='<Row ss:Height="17">'+cell('Imię','head');
+  for(let d=1;d<=days;d++){
+    const dow=getDow(year,month,d);
+    xml+=cell(d,isWeekend(dow)?'weekendHead':'head','Number');
+  }
+  xml+=cell('S','total')+'</Row>';
+  employees.forEach(emp=>{
+    const s=getMonthSetting(emp,key);
+    xml+='<Row ss:Height="15">'+cell(emp.name,'emp');
+    for(let d=1;d<=days;d++){
+      const v=scheduleData[key]?.[emp.id]?.[d] || '';
+      xml+=cell(v,styleId(v,isWeekend(getDow(year,month,d))));
+    }
+    xml+=cell(totalForEmp(emp),'total','Number')+'</Row>';
+  });
+  xml+='<Row ss:Height="15">'+cell('','weekday');
+  for(let d=1;d<=days;d++){
+    const dow=getDow(year,month,d);
+    xml+=cell(dowLetter(dow),isWeekend(dow)?'weekdayWeekend':'weekday');
+  }
+  xml+=cell('','total')+'</Row>';
+  xml+='<Row ss:Height="8"></Row>';
+  const legendRows=[['D','D = Dzień 7:00-19:00'],['N','N = Noc 19:00-7:00'],...Object.keys(shifts).map(code=>[code,`${code} = ${shifts[code].from}-${shifts[code].to}`]),['X','X = Wolne / niedostępność'],['U','U = Urlop']];
+  legendRows.forEach(([code,label])=>{
+    xml+=`<Row ss:Height="15">${cell(code,styleId(code))}${cell(label,'legendText')}</Row>`;
+  });
+  xml+=`</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+<PageSetup><Layout x:Orientation="Landscape"/><PageMargins x:Bottom="0.35" x:Left="0.25" x:Right="0.25" x:Top="0.35"/></PageSetup>
+<Print><FitWidth>1</FitWidth><FitHeight>1</FitHeight><ValidPrinterInfo/></Print>
+</WorksheetOptions></Worksheet></Workbook>`;
+  const blob=new Blob([xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Grafik_${monthName}_${year}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},0);
+}
+
+// ============ MONTHLY EMPLOYEE SETTINGS + HISTORY ============
+let scheduleHistory = JSON.parse(localStorage.getItem('grafik_history5') || '[]');
+function saveHistory(){ localStorage.setItem('grafik_history5', JSON.stringify(scheduleHistory)); }
+function pruneOldHistory(){
+  const now=new Date();
+  const cutoff=new Date(now.getFullYear(), now.getMonth()-3, 1);
+  const before=scheduleHistory.length;
+  scheduleHistory=scheduleHistory.filter(h=>{
+    const y=parseInt(h.year,10), m=parseInt(h.month,10);
+    if(Number.isNaN(y)||Number.isNaN(m)) return false;
+    return new Date(y,m,1) >= cutoff;
+  });
+  if(scheduleHistory.length!==before) saveHistory();
+}
+function monthKeyFromPicker(){
+  const {month,year}=getSelectedMonthYear();
+  return `${year}-${month}`;
+}
+function ensureMonthSettings(emp,key=monthKeyFromPicker()){
+  if(!emp.monthSettings) emp.monthSettings={};
+  if(!emp.monthSettings[key]){
+    emp.monthSettings[key]={
+      daysOff:[],
+      availability:emp.availability || 'always',
+      shiftType:emp.shiftType || 'DN',
+      fixedDays:[...normalizeFixedDays(emp.fixedDays)],
+      manual:!!emp.manual,
+      maxShifts:emp.maxShifts || ''
+    };
+  }
+  return emp.monthSettings[key];
+}
+function getMonthSetting(emp,key=monthKeyFromPicker()){
+  return ensureMonthSettings(emp,key);
+}
+function resetEmployeeMonth(id){
+  const emp=employees.find(e=>e.id===id); if(!emp)return;
+  const key=monthKeyFromPicker();
+  if(!emp.monthSettings) emp.monthSettings={};
+  emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),manual:false,maxShifts:''};
+  saveEmp(); renderEmployees(); renderNewCalendar();
+}
+function resetAllEmployeesMonth(){
+  const key=monthKeyFromPicker();
+  if(!confirm('Zresetować ustawienia wszystkich pracowników dla tego miesiąca?')) return;
+  employees.forEach(emp=>{
+    if(!emp.monthSettings) emp.monthSettings={};
+    emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),manual:false,maxShifts:''};
+  });
+  saveEmp(); renderEmployees(); renderNewCalendar();
+}
+function editEmployeeName(id){
+  const emp=employees.find(e=>e.id===id); if(!emp)return;
+  const name=prompt('Nowe imię i nazwisko:', emp.name);
+  if(name && name.trim()){ emp.name=name.trim(); saveEmp(); renderEmployees(); }
+}
+function setEmpAvail(id,v){const e=employees.find(e=>e.id===id);if(e){getMonthSetting(e).availability=v;saveEmp();renderEmployees();}}
+function setEmpStype(id,v){const e=employees.find(e=>e.id===id);if(e){const s=getMonthSetting(e);s.shiftType=v;s.fixedDays=normalizeFixedDays(s.fixedDays);saveEmp();renderEmployees();}}
+function toggleManual(id){const e=employees.find(e=>e.id===id);if(e){const s=getMonthSetting(e);s.manual=!s.manual;saveEmp();renderEmployees();}}
+function setEmpMaxShifts(id,v){
+  const e=employees.find(e=>e.id===id); if(!e)return;
+  const s=getMonthSetting(e);
+  const max=parseInt(v,10);
+  s.maxShifts=Number.isFinite(max) && max>0 ? max : '';
+  saveEmp();
+}
+function toggleEmpFixedDay(id,d){
+  const e=employees.find(x=>x.id===id); if(!e)return;
+  const s=getMonthSetting(e);
+  s.fixedDays=normalizeFixedDays(s.fixedDays);
+  toggleArrayValue(s.fixedDays,d); saveEmp(); renderEmployees();
+}
+function toggleEmpDayOff(id,day){
+  const e=employees.find(x=>x.id===id); if(!e)return;
+  const s=getMonthSetting(e);
+  if(!Array.isArray(s.daysOff)) s.daysOff=[];
+  toggleArrayValue(s.daysOff,day); saveEmp(); renderEmployees();
+}
+function addEmployee(){
+  const name=document.getElementById('new-emp-name').value.trim();
+  if(!name){alert('Wpisz imię!');return;}
+  const key=monthKeyFromPicker();
+  const emp={id:Date.now(), name, monthSettings:{}};
+  const max=parseInt(document.getElementById('new-max-shifts')?.value||'',10);
+  emp.monthSettings[key]={daysOff:[...newDaysOff], availability:newAvail, shiftType:newStype, fixedDays:[...newFixedDays], manual:newManual, maxShifts:Number.isFinite(max)&&max>0?max:''};
+  employees.push(emp);
+  saveEmp(); renderEmployees();
+  document.getElementById('new-emp-name').value='';
+  newDaysOff=[]; newAvail='always'; newStype='DN'; newManual=false; newFixedDays=defaultFixedDays(); newMaxShifts='';
+  const maxInput=document.getElementById('new-max-shifts'); if(maxInput) maxInput.value='';
+  document.getElementById('new-avail-group').querySelectorAll('.avail-btn').forEach((b,i)=>{b.classList.remove('sel-always','sel-weekday','sel-weekend');if(i===0)b.classList.add('sel-always');});
+  document.getElementById('new-manual-toggle').classList.remove('active');
+  renderShiftTypeButtons(); renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay'); renderNewCalendar();
+}
+function renderEmployees(){
+  const list=document.getElementById('emp-list');
+  if(!employees.length){list.innerHTML='<div class="empty-state">Brak pracowników.</div>';return;}
+  const key=monthKeyFromPicker();
+  const {month,year}=getSelectedMonthYear();
+  list.innerHTML=`<div class="info-box"><strong>Edytujesz ustawienia dla:</strong> ${MONTHS_PL[month]} ${year}. Pracownicy zostają w aplikacji, ale dni wolne, typ zmiany i tryb ręczny są osobne dla każdego miesiąca.</div>
+  <button class="btn btn-danger" onclick="resetAllEmployeesMonth()" style="margin-bottom:12px">Reset ustawień pracowników dla tego miesiąca</button>` + employees.map(emp=>{
+    const s=getMonthSetting(emp,key);
+    const av=s.availability||'always', st=s.shiftType||'DN', mn=!!s.manual;
+    const fixedDays=normalizeFixedDays(s.fixedDays);
+    const stColor=st==='DN'?'var(--shiftD)':getShiftColor(st);
+    const fixedBoxId=`fd-${emp.id}`;
+    const calId=`cal-${emp.id}`;
+    const stButtons=['DN','ONLY_D','ONLY_N',...Object.keys(shifts)].map(code=>{
+      const sel=st===code;
+      const cls=code==='DN'?'sel-DN':(code==='ONLY_N'||code==='ONLY_D')?'sel-CUSTOM':(['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM');
+      const label=code==='DN'?'D/N':code==='ONLY_N'?'Tylko N':code==='ONLY_D'?'Tylko D':escapeHtml(code);
+      return `<button class="stype-btn ${sel?cls:''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${label}</button>`;
+    }).join('');
+    setTimeout(()=>{ if(document.getElementById(fixedBoxId)) renderWeekdayButtons(fixedBoxId,fixedDays,'toggleEmpFixedDay',emp.id); if(document.getElementById(calId)) renderCalendar(calId,s.daysOff||[],'toggleEmpDayOff',emp.id); },0);
+    return `<div class="emp-item${mn?' manual-mode':''}">
+      <div class="emp-header">
+        <span class="emp-name-lbl">${mn?'✏️':'👤'} ${escapeHtml(emp.name)}</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary btn-small" onclick="editEmployeeName(${emp.id})">Edytuj nazwę</button>
+          <button class="btn btn-danger btn-small" onclick="resetEmployeeMonth(${emp.id})">Reset miesiąca</button>
+          <label class="manual-toggle${mn?' active':''}" onclick="toggleManual(${emp.id})"><span class="mtog-icon">✏️</span> Ręczny</label>
+          <button class="btn btn-danger" onclick="deleteEmployee(${emp.id})">Usuń</button>
+        </div>
+      </div>
+      <div class="emp-details">
+        <div>
+          <label>Dostępność w tym miesiącu</label>
+          <div class="avail-group" id="ag-${emp.id}">
+            <button class="avail-btn ${av==='always'?'sel-always':''}" onclick="setEmpAvail(${emp.id},'always')">Zawsze</button>
+            <button class="avail-btn ${av==='weekday'?'sel-weekday':''}" onclick="setEmpAvail(${emp.id},'weekday')">Tylko tydzień</button>
+            <button class="avail-btn ${av==='weekend'?'sel-weekend':''}" onclick="setEmpAvail(${emp.id},'weekend')">Tylko weekend</button>
+          </div>
+        </div>
+        <div>
+          <label>Typ zmiany w tym miesiącu</label>
+          <div class="shift-type-group" id="sg-${emp.id}">${stButtons}</div>
+        </div>
+        <div class="max-shifts-field">
+          <label>Maks. zmian</label>
+          <input type="number" min="0" value="${escapeHtml(s.maxShifts||'')}" placeholder="brak" onchange="setEmpMaxShifts(${emp.id},this.value)">
+        </div>
+        <div style="min-width:260px">
+          <label>Dni pracy dla Tylko D / Tylko N albo stałej zmiany <span style="color:${stColor};font-weight:700">${st==='ONLY_N'?'Tylko N':st==='ONLY_D'?'Tylko D':escapeHtml(st)}</span></label>
+          <div class="weekdays-box" id="${fixedBoxId}"></div>
+        </div>
+      </div>
+      <div class="calendar-picker" id="${calId}"></div>
+    </div>`;
+  }).join('');
+}
+function isAvailableMonthly(emp,dow,key){
+  const s=getMonthSetting(emp,key);
+  const a=s.availability||'always';
+  if(a==='weekday') return !isWeekend(dow);
+  if(a==='weekend') return isWeekend(dow);
+  return true;
+}
+function buildDefaultSchedule(year, month){
+  const key=`${year}-${month}`;
+  const days=getDaysInMonth(year,month);
+  const result={};
+  const stats={};
+  employees.forEach(emp=>{ result[emp.id]={}; stats[emp.id]={D:0,N:0,'7':0,total:0}; ensureMonthSettings(emp,key); });
+  for(let d=1; d<=days; d++){
+    const dow=getDow(year,month,d);
+    const used=new Set();
+    const prev={}; employees.forEach(e=>{ prev[e.id]=d>1?result[e.id][d-1]:''; });
+    const prev2={}; employees.forEach(e=>{ prev2[e.id]=d>2?result[e.id][d-2]:''; });
+    const ctx={prev,prev2,key,day:d,days};
+    employees.forEach(emp=>{
+      const s=getMonthSetting(emp,key);
+      emp.stats=stats[emp.id];
+      const off=(s.daysOff||[]).includes(d);
+      if(s.manual){ result[emp.id][d]='X'; used.add(emp.id); return; }
+      if(off){ result[emp.id][d]='U'; used.add(emp.id); return; }
+      if(!isAvailableMonthly(emp,dow,key)){ result[emp.id][d]='X'; used.add(emp.id); return; }
+      const fdays=normalizeFixedDays(s.fixedDays);
+      if(isFixedShift(s.shiftType)){
+        if(fdays.includes(dow) && canTakeMoreShifts(emp,key)){
+          result[emp.id][d]=s.shiftType; used.add(emp.id); addStat(emp,s.shiftType);
+        }
+      }
+    });
+    const activeDN=employees.filter(emp=>{
+      const s=getMonthSetting(emp,key);
+      return !used.has(emp.id) && !s.manual && (s.shiftType||'DN')==='DN' && !(s.daysOff||[]).includes(d) && isAvailableMonthly(emp,dow,key) && canTakeMoreShifts(emp,key);
+    });
+    const activeOnlyN=employees.filter(emp=>{
+      const s=getMonthSetting(emp,key);
+      const fdays=normalizeFixedDays(s.fixedDays);
+      return !used.has(emp.id) && !s.manual && s.shiftType==='ONLY_N' && !(s.daysOff||[]).includes(d) && isAvailableMonthly(emp,dow,key) && fdays.includes(dow) && canTakeMoreShifts(emp,key);
+    });
+    const activeOnlyD=employees.filter(emp=>{
+      const s=getMonthSetting(emp,key);
+      const fdays=normalizeFixedDays(s.fixedDays);
+      return !used.has(emp.id) && !s.manual && s.shiftType==='ONLY_D' && !(s.daysOff||[]).includes(d) && isAvailableMonthly(emp,dow,key) && fdays.includes(dow) && canTakeMoreShifts(emp,key);
+    });
+    const backupCandidates=(shift)=>employees.filter(emp=>{
+      const s=getMonthSetting(emp,key);
+      if(used.has(emp.id) || s.manual || (s.daysOff||[]).includes(d) || !isAvailableMonthly(emp,dow,key)) return false;
+      if(!canTakeMoreShifts(emp,key)) return false;
+      const st=s.shiftType||'DN';
+      const fdays=normalizeFixedDays(s.fixedDays);
+      if((st==='ONLY_N' || st==='ONLY_D') && !fdays.includes(dow)) return false;
+      if(shift==='D' && ctx.prev[emp.id]==='N') return false;
+      if(shift==='N' && wouldBeThirdNight(emp,ctx,key)) return false;
+      if(st==='ONLY_N' && shift!=='N') return false;
+      if(st==='ONLY_D' && shift!=='D') return false;
+      if(isFixedShift(st) && fdays.includes(dow)) return false;
+      return true;
+    });
+    for(let i=0;i<2;i++){
+      const dayCandidates=[...activeOnlyD.filter(e=>!used.has(e.id) && ctx.prev[e.id]!=='N'), ...activeDN.filter(e=>!used.has(e.id) && ctx.prev[e.id]!=='N')];
+      const emp=pickBalanced(dayCandidates,'D',ctx,false) || pickBalanced(backupCandidates('D'),'D',ctx,false);
+      if(emp){ result[emp.id][d]='D'; used.add(emp.id); addStat(emp,'D'); }
+    }
+    for(let i=0;i<2;i++){
+      const nightCandidates=[...activeOnlyN.filter(e=>!used.has(e.id)), ...activeDN.filter(e=>!used.has(e.id) && !wouldBeThirdNight(e,ctx,key))];
+      const emp=pickBalanced(nightCandidates,'N',ctx,false) || pickBalanced(backupCandidates('N'),'N',ctx,false);
+      if(emp){ result[emp.id][d]='N'; used.add(emp.id); addStat(emp,'N'); }
+    }
+    if(isFriSatSun(dow) && employees.filter(emp=>result[emp.id][d]==='7').length===0){
+      const fallbackDN=activeDN.filter(e=>!used.has(e.id));
+      const emp=pickBalanced(fallbackDN,'7',ctx,true) || pickBalanced(backupCandidates('7'),'7',ctx,true);
+      if(emp){ result[emp.id][d]='7'; used.add(emp.id); addStat(emp,'7'); }
+    }
+    employees.forEach(emp=>{ if(result[emp.id][d]===undefined) result[emp.id][d]='X'; });
+  }
+  trimTooLongNightRuns(result,days,key);
+  employees.forEach(e=>delete e.stats);
+  saveEmp();
+  return result;
+}
+function buildSchedule(){
+  const month=parseInt(document.getElementById('sel-month').value,10);
+  const year=parseInt(document.getElementById('sel-year').value,10);
+  if(!employees.length){alert('Najpierw dodaj pracowników!');return;}
+  currentMonth=month; currentYear=year;
+  const days=getDaysInMonth(year,month);
+  const key=`${year}-${month}`;
+  scheduleData[key]=buildDefaultSchedule(year,month);
+  saveSched();
+  const snapshot={
+    id:Date.now(), key, month, year, title:`${MONTHS_PL[month]} ${year}`,
+    createdAt:new Date().toLocaleString('pl-PL'),
+    employees:employees.map(e=>({id:e.id,name:e.name,setting:getMonthSetting(e,key)})),
+    schedule:JSON.parse(JSON.stringify(scheduleData[key]))
+  };
+  pruneOldHistory();
+  scheduleHistory.unshift(snapshot);
+  saveHistory();
+  document.getElementById('schedule-title').textContent=`GRAFIK ${MONTHS_PL[month].toUpperCase()} ${year}`;
+  renderScheduleTable(year,month,days);
+  document.getElementById('schedule-card').style.display='block';
+}
+function renderHistory(){
+  pruneOldHistory();
+  const box=document.getElementById('history-list');
+  if(!scheduleHistory.length){box.innerHTML='<div class="empty-state">Brak zapisanych grafików.</div>';return;}
+  box.innerHTML=`<button class="btn btn-danger" onclick="deleteAllHistory()" style="margin-bottom:12px">Usuń wszystkie grafiki z historii</button>` + scheduleHistory.map(h=>`<div class="emp-item">
+    <div class="emp-header">
+      <span class="emp-name-lbl">📅 ${escapeHtml(h.title)} <span style="color:var(--text2);font-size:.75rem"> zapis: ${escapeHtml(h.createdAt)}</span></span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-small" onclick="loadHistory(${h.id})">Otwórz</button>
+        <button class="btn btn-danger btn-small" onclick="deleteHistory(${h.id})">Usuń</button>
+      </div>
+    </div>
+  </div>`).join('');
+}
+function loadHistory(id){
+  const h=scheduleHistory.find(x=>x.id===id); if(!h)return;
+  document.getElementById('sel-month').value=h.month;
+  document.getElementById('sel-year').value=h.year;
+  syncCalendarDateFromSchedulePage();
+  currentMonth=h.month; currentYear=h.year;
+  scheduleData[h.key]=JSON.parse(JSON.stringify(h.schedule));
+  saveSched();
+  document.getElementById('schedule-title').textContent=`GRAFIK ${MONTHS_PL[h.month].toUpperCase()} ${h.year} — HISTORIA`;
+  renderScheduleTable(h.year,h.month,getDaysInMonth(h.year,h.month));
+  document.getElementById('schedule-card').style.display='block';
+  showPage('schedule',document.querySelector(".tab[onclick*=schedule]"));
+}
+function deleteHistory(id){
+  if(!confirm('Usunąć ten grafik z historii?'))return;
+  scheduleHistory=scheduleHistory.filter(h=>h.id!==id); saveHistory(); renderHistory();
+}
+function deleteAllHistory(){
+  if(!scheduleHistory.length)return;
+  if(!confirm('Usunąć wszystkie zapisane grafiki z historii?'))return;
+  scheduleHistory=[];
+  saveHistory();
+  renderHistory();
+}
+function syncCalendarDateFromEmployeePage(){
+  const m=document.getElementById('emp-cal-month').value;
+  const y=document.getElementById('emp-cal-year').value;
+  document.getElementById('sel-month').value=m;
+  document.getElementById('sel-year').value=y;
+  newDaysOff=[];
+  renderNewCalendar();
+  renderEmployees();
+}
+function syncCalendarDateFromSchedulePage(){
+  const empMonth=document.getElementById('emp-cal-month');
+  const empYear=document.getElementById('emp-cal-year');
+  if(empMonth) empMonth.value=document.getElementById('sel-month').value;
+  if(empYear) empYear.value=document.getElementById('sel-year').value;
+  newDaysOff=[];
+  renderNewCalendar();
+  renderEmployees();
+}
+let lastMonthKey=null;
+
+function autoResetForNewMonth(){
+  const key=monthKeyFromPicker();
+  if(lastMonthKey===null){ lastMonthKey=key; return; }
+  if(lastMonthKey!==key){
+    // automatyczny reset ustawień dla nowego miesiąca
+    employees.forEach(emp=>{
+      if(!emp.monthSettings) emp.monthSettings={};
+      if(!emp.monthSettings[key]){
+        emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),manual:false,maxShifts:''};
+      }
+    });
+    saveEmp();
+    lastMonthKey=key;
+  }
+}
+
+function init(){
+  pruneOldHistory();
+  const now=new Date();
+  const currentMonthValue=now.getMonth();
+  const currentYearValue=now.getFullYear();
+
+  // po wejściu aplikacja od razu ustawia aktualny miesiąc i rok
+  document.getElementById('sel-month').value=currentMonthValue;
+  document.getElementById('sel-year').value=currentYearValue;
+  document.getElementById('emp-cal-month').value=currentMonthValue;
+  document.getElementById('emp-cal-year').value=currentYearValue;
+
+  // zapamiętaj aktualny miesiąc jako startowy, żeby nie resetowało od razu po uruchomieniu
+  lastMonthKey=`${currentYearValue}-${currentMonthValue}`;
+  renderShiftsUI(); renderShiftTypeButtons(); renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay'); renderNewCalendar(); renderEmployees(); updateDynamicLegends(); renderHistory();
+}
+init();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
