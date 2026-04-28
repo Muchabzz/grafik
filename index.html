@@ -20,9 +20,9 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
-  header{background:linear-gradient(135deg,#d71920,#071a33);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(7,26,51,.35)}
-  header h1{font-size:1.3rem;font-weight:700;letter-spacing:1px}
-  header span{font-size:1.6rem}
+  header{background:linear-gradient(135deg,#d71920,#071a33);color:#fff;padding:14px 20px;display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(7,26,51,.35)}
+  header h1{text-align:center;font-size:1.45rem;font-weight:800;letter-spacing:1px}
+  header .app-logo{width:42px;height:42px;border-radius:10px;object-fit:cover;background:#fff}
   .container{max-width:1250px;margin:0 auto;padding:16px}
   .tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
   .tab{padding:8px 18px;border-radius:20px;border:2px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:.88rem;font-weight:600;transition:all .2s}
@@ -106,13 +106,14 @@
   .page{display:none}
   .page.active{display:block}
   .empty-state{text-align:center;padding:30px;color:var(--text2);font-size:.9rem}
-  @media(max-width:500px){header h1{font-size:1rem}.tab{padding:6px 12px;font-size:.8rem}}
+  @media(max-width:500px){header{grid-template-columns:40px 1fr 40px;padding:12px 14px}header h1{font-size:1.1rem}.tab{padding:6px 12px;font-size:.8rem}header .app-logo{width:36px;height:36px}}
 </style>
 </head>
 <body>
 <header>
-  <span>📅</span>
-  <h1>GRAFIK PRACY</h1>
+  <img class="app-logo" src="icons/icon-192.png" alt="">
+  <h1>Bonjour</h1>
+  <div></div>
 </header>
 <div class="container">
   <div class="tabs">
