@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#ffffff"/>
+  <path d="M96 96h320v320H96z" fill="#071a33"/>
+  <path d="M96 96h320v88H96z" fill="#d71920"/>
+  <g fill="#ffffff" font-family="Arial, sans-serif" font-weight="700">
+    <text x="256" y="154" font-size="54" text-anchor="middle">GRAFIK</text>
+  </g>
+  <g stroke="#ffffff" stroke-width="10">
+    <path d="M150 238h212M150 298h212M150 358h212"/>
+  </g>
+  <rect x="132" y="220" width="48" height="36" rx="8" fill="#fff36a"/>
+  <rect x="132" y="280" width="48" height="36" rx="8" fill="#ff7fb2"/>
+  <rect x="132" y="340" width="48" height="36" rx="8" fill="#d7df2a"/>
+</svg>
