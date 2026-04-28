@@ -1,4 +1,4 @@
-const CACHE_NAME = "grafik-pwa-v12";
+const CACHE_NAME = "grafik-pwa-v14";
 const APP_FILES = [
   "./",
   "./index.html",
