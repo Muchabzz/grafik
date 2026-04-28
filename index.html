@@ -65,6 +65,9 @@
   .mtog-icon{font-size:1rem}
 
   .calendar-picker{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:8px;max-width:360px}
+  .extra-shift-panel{width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:8px}
+  .extra-shift-block{border-top:1px solid var(--border);padding-top:10px;margin-top:10px}
+  .extra-shift-title{font-weight:800;color:var(--text);margin-bottom:6px}
   .calendar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;color:var(--text2);font-size:.82rem}
   .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
   .cal-label{text-align:center;color:var(--text2);font-size:.68rem;padding:3px}
@@ -300,6 +303,22 @@ const WEEKDAY_NAMES={1:'Pn',2:'Wt',3:'Śr',4:'Cz',5:'Pt',6:'Sb',0:'Nd'};
 function defaultFixedDays(){ return [1,2,3,4,5,6,0]; }
 function normalizeFixedDays(days){ return Array.isArray(days) && days.length ? days : defaultFixedDays(); }
 function normalizeFixedDates(days){ return Array.isArray(days) ? days : []; }
+function getFixedShiftCodes(){ return Object.keys(shifts); }
+function normalizeExtraFixedShifts(extra){
+  return extra && typeof extra==='object' && !Array.isArray(extra) ? extra : {};
+}
+function ensureExtraShift(setting,code){
+  if(!setting.extraFixedShifts || typeof setting.extraFixedShifts!=='object' || Array.isArray(setting.extraFixedShifts)) setting.extraFixedShifts={};
+  if(!setting.extraFixedShifts[code]) setting.extraFixedShifts[code]={fixedDays:defaultFixedDays(),fixedDates:[]};
+  setting.extraFixedShifts[code].fixedDays=normalizeFixedDays(setting.extraFixedShifts[code].fixedDays);
+  setting.extraFixedShifts[code].fixedDates=normalizeFixedDates(setting.extraFixedShifts[code].fixedDates);
+  return setting.extraFixedShifts[code];
+}
+function extraShiftApplies(extra,day,dow){
+  const dates=normalizeFixedDates(extra.fixedDates);
+  if(dates.length) return dates.includes(day);
+  return normalizeFixedDays(extra.fixedDays).includes(dow);
+}
 function usesExactShiftDates(setting){
   return isFixedShift(setting?.shiftType) && normalizeFixedDates(setting.fixedDates).length>0;
 }
@@ -418,6 +437,12 @@ function renderWeekdayButtons(containerId, selectedDays, onClickName, empId=null
   const box=document.getElementById(containerId);
   box.innerHTML=WEEKDAY_ORDER.map(d=>`<button class="day-btn ${selectedDays.includes(d)?'active':''}" onclick="${onClickName}(${empId!==null?empId+',':''}${d})">${WEEKDAY_NAMES[d]}</button>`).join('');
 }
+function renderExtraWeekdayButtons(containerId, selectedDays, empId, code){
+  const box=document.getElementById(containerId);
+  if(!box) return;
+  const codeArg=JSON.stringify(code);
+  box.innerHTML=WEEKDAY_ORDER.map(d=>`<button class="day-btn ${selectedDays.includes(d)?'active':''}" onclick="toggleEmpExtraShiftDay(${empId},${codeArg},${d})">${WEEKDAY_NAMES[d]}</button>`).join('');
+}
 function toggleNewFixedDay(d){ toggleArrayValue(newFixedDays,d); renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay'); }
 function toggleEmpFixedDay(id,d){
   const e=employees.find(x=>x.id===id); if(!e)return;
@@ -450,7 +475,7 @@ function renderCalendar(containerId, daysOff, callbackName, empId=null){
   html+='</div><div class="cal-help">Czerwone dni to dni wolne/urlop. Kalendarz pokazuje miesiąc wybrany w zakładce „Grafik”.</div>';
   document.getElementById(containerId).innerHTML=html;
 }
-function renderShiftDateCalendar(containerId, selectedDays, callbackName, empId=null){
+function renderShiftDateCalendar(containerId, selectedDays, callbackName, empId=null, title='Konkretne dni tej zmiany', extraArg=null){
   const box=document.getElementById(containerId);
   if(!box) return;
   const {month,year}=getSelectedMonthYear();
@@ -458,13 +483,14 @@ function renderShiftDateCalendar(containerId, selectedDays, callbackName, empId=
   const firstDow=getDow(year,month,1);
   const mondayIndex=(firstDow+6)%7;
   const selected=normalizeFixedDates(selectedDays);
-  let html=`<div class="calendar-head"><strong>${MONTHS_PL[month]} ${year}</strong><span>Konkretne dni tej zmiany</span></div>`;
+  let html=`<div class="calendar-head"><strong>${escapeHtml(title)}</strong><span>${MONTHS_PL[month]} ${year}</span></div>`;
   html+='<div class="calendar-grid">';
   ['Pn','Wt','Śr','Cz','Pt','Sb','Nd'].forEach(x=>html+=`<div class="cal-label">${x}</div>`);
   for(let i=0;i<mondayIndex;i++) html+='<button class="cal-day empty"></button>';
   for(let d=1;d<=days;d++){
     const on=selected.includes(d);
-    html+=`<button class="cal-day ${on?'shift-date':''}" onclick="${callbackName}(${empId!==null?empId+',':''}${d})">${d}</button>`;
+    const args=[empId, extraArg, d].filter(v=>v!==null).map(v=>typeof v==='string'?JSON.stringify(v):v).join(',');
+    html+=`<button class="cal-day ${on?'shift-date':''}" onclick="${callbackName}(${args})">${d}</button>`;
   }
   html+='</div><div class="cal-help">Żółte dni oznaczają konkretne daty, w które ma wejść stała/własna zmiana. Jeśli nic nie zaznaczysz, działa wybór dni tygodnia powyżej.</div>';
   box.innerHTML=html;
@@ -589,7 +615,14 @@ function deleteCustomShift(code){
   if(['8','7','19'].includes(code)){alert('Tych podstawowych zmian nie usuwam, możesz zmienić ich godziny.');return;}
   if(!confirm('Usunąć zmianę '+code+'?'))return;
   delete shifts[code];
-  employees.forEach(e=>{ if(e.shiftType===code)e.shiftType='DN'; });
+  employees.forEach(e=>{
+    if(e.shiftType===code)e.shiftType='DN';
+    if(e.extraFixedShifts && e.extraFixedShifts[code]) delete e.extraFixedShifts[code];
+    Object.values(e.monthSettings||{}).forEach(s=>{
+      if(s.shiftType===code) s.shiftType='DN';
+      if(s.extraFixedShifts && s.extraFixedShifts[code]) delete s.extraFixedShifts[code];
+    });
+  });
   saveShiftStore(); saveEmp(); renderShiftsUI(); renderShiftTypeButtons(); renderEmployees(); updateDynamicLegends();
 }
 function renderShiftsUI(){
@@ -986,6 +1019,7 @@ function ensureMonthSettings(emp,key=monthKeyFromPicker()){
       shiftType:emp.shiftType || 'DN',
       fixedDays:[...normalizeFixedDays(emp.fixedDays)],
       fixedDates:[...normalizeFixedDates(emp.fixedDates)],
+      extraFixedShifts:normalizeExtraFixedShifts(emp.extraFixedShifts),
       manual:!!emp.manual,
       maxShifts:emp.maxShifts || ''
     };
@@ -999,7 +1033,7 @@ function resetEmployeeMonth(id){
   const emp=employees.find(e=>e.id===id); if(!emp)return;
   const key=monthKeyFromPicker();
   if(!emp.monthSettings) emp.monthSettings={};
-  emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],manual:false,maxShifts:''};
+  emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
   saveEmp(); renderEmployees(); renderNewCalendar();
 }
 function resetAllEmployeesMonth(){
@@ -1007,7 +1041,7 @@ function resetAllEmployeesMonth(){
   if(!confirm('Zresetować ustawienia wszystkich pracowników dla tego miesiąca?')) return;
   employees.forEach(emp=>{
     if(!emp.monthSettings) emp.monthSettings={};
-    emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],manual:false,maxShifts:''};
+    emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
   });
   saveEmp(); renderEmployees(); renderNewCalendar();
 }
@@ -1038,6 +1072,26 @@ function toggleEmpFixedDate(id,day){
   if(!Array.isArray(s.fixedDates)) s.fixedDates=[];
   toggleArrayValue(s.fixedDates,day); saveEmp(); renderEmployees();
 }
+function toggleEmpExtraShift(id,code){
+  const e=employees.find(x=>x.id===id); if(!e)return;
+  const s=getMonthSetting(e);
+  if(!s.extraFixedShifts || typeof s.extraFixedShifts!=='object' || Array.isArray(s.extraFixedShifts)) s.extraFixedShifts={};
+  if(s.extraFixedShifts[code]) delete s.extraFixedShifts[code];
+  else s.extraFixedShifts[code]={fixedDays:defaultFixedDays(),fixedDates:[]};
+  saveEmp(); renderEmployees();
+}
+function toggleEmpExtraShiftDay(id,code,dow){
+  const e=employees.find(x=>x.id===id); if(!e)return;
+  const s=getMonthSetting(e);
+  const extra=ensureExtraShift(s,code);
+  toggleArrayValue(extra.fixedDays,dow); saveEmp(); renderEmployees();
+}
+function toggleEmpExtraShiftDate(id,code,day){
+  const e=employees.find(x=>x.id===id); if(!e)return;
+  const s=getMonthSetting(e);
+  const extra=ensureExtraShift(s,code);
+  toggleArrayValue(extra.fixedDates,day); saveEmp(); renderEmployees();
+}
 function toggleEmpDayOff(id,day){
   const e=employees.find(x=>x.id===id); if(!e)return;
   const s=getMonthSetting(e);
@@ -1050,7 +1104,7 @@ function addEmployee(){
   const key=monthKeyFromPicker();
   const emp={id:Date.now(), name, monthSettings:{}};
   const max=parseInt(document.getElementById('new-max-shifts')?.value||'',10);
-  emp.monthSettings[key]={daysOff:[...newDaysOff], availability:newAvail, shiftType:newStype, fixedDays:[...newFixedDays], fixedDates:[...newFixedDates], manual:newManual, maxShifts:Number.isFinite(max)&&max>0?max:''};
+  emp.monthSettings[key]={daysOff:[...newDaysOff], availability:newAvail, shiftType:newStype, fixedDays:[...newFixedDays], fixedDates:[...newFixedDates], extraFixedShifts:{}, manual:newManual, maxShifts:Number.isFinite(max)&&max>0?max:''};
   employees.push(emp);
   saveEmp(); renderEmployees();
   document.getElementById('new-emp-name').value='';
@@ -1071,6 +1125,7 @@ function renderEmployees(){
     const av=s.availability||'always', st=s.shiftType||'DN', mn=!!s.manual;
     const fixedDays=normalizeFixedDays(s.fixedDays);
     const fixedDates=normalizeFixedDates(s.fixedDates);
+    const extraFixedShifts=normalizeExtraFixedShifts(s.extraFixedShifts);
     const stColor=st==='DN'?'var(--shiftD)':getShiftColor(st);
     const fixedBoxId=`fd-${emp.id}`;
     const fixedDateCalId=`fdate-${emp.id}`;
@@ -1081,7 +1136,33 @@ function renderEmployees(){
       const label=code==='DN'?'D/N':code==='ONLY_N'?'Tylko N':code==='ONLY_D'?'Tylko D':escapeHtml(code);
       return `<button class="stype-btn ${sel?cls:''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${label}</button>`;
     }).join('');
-    setTimeout(()=>{ if(document.getElementById(fixedBoxId)) renderWeekdayButtons(fixedBoxId,fixedDays,'toggleEmpFixedDay',emp.id); if(document.getElementById(fixedDateCalId)) renderShiftDateCalendar(fixedDateCalId,fixedDates,'toggleEmpFixedDate',emp.id); if(document.getElementById(calId)) renderCalendar(calId,s.daysOff||[],'toggleEmpDayOff',emp.id); },0);
+    const extraCodes=getFixedShiftCodes();
+    const extraButtons=extraCodes.map(code=>{
+      const active=!!extraFixedShifts[code];
+      const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
+      return `<button class="stype-btn ${active?cls:''}" onclick="toggleEmpExtraShift(${emp.id},${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+    }).join('');
+    const extraBlocks=Object.keys(extraFixedShifts).map(code=>{
+      const weekdayId=`exw-${emp.id}-${String(code).replace(/[^A-Za-z0-9_]/g,'_')}`;
+      const calIdExtra=`exc-${emp.id}-${String(code).replace(/[^A-Za-z0-9_]/g,'_')}`;
+      const extra=ensureExtraShift(s,code);
+      return `<div class="extra-shift-block">
+        <div class="extra-shift-title">Zmiana ${escapeHtml(code)} - dni tygodnia i konkretne daty</div>
+        <div class="weekdays-box" id="${weekdayId}"></div>
+        <div class="calendar-picker" id="${calIdExtra}"></div>
+      </div>`;
+    }).join('');
+    setTimeout(()=>{ 
+      if(document.getElementById(fixedBoxId)) renderWeekdayButtons(fixedBoxId,fixedDays,'toggleEmpFixedDay',emp.id); 
+      if(document.getElementById(fixedDateCalId)) renderShiftDateCalendar(fixedDateCalId,fixedDates,'toggleEmpFixedDate',emp.id,`Główna zmiana ${st}`);
+      Object.keys(extraFixedShifts).forEach(code=>{
+        const safe=String(code).replace(/[^A-Za-z0-9_]/g,'_');
+        const extra=ensureExtraShift(s,code);
+        renderExtraWeekdayButtons(`exw-${emp.id}-${safe}`,normalizeFixedDays(extra.fixedDays),emp.id,code);
+        renderShiftDateCalendar(`exc-${emp.id}-${safe}`,normalizeFixedDates(extra.fixedDates),'toggleEmpExtraShiftDate',emp.id,`Zmiana ${code}`,code);
+      });
+      if(document.getElementById(calId)) renderCalendar(calId,s.daysOff||[],'toggleEmpDayOff',emp.id); 
+    },0);
     return `<div class="emp-item${mn?' manual-mode':''}">
       <div class="emp-header">
         <span class="emp-name-lbl">${mn?'✏️':'👤'} ${escapeHtml(emp.name)}</span>
@@ -1112,6 +1193,11 @@ function renderEmployees(){
         <div style="min-width:260px">
           <label>Dni pracy dla Tylko D / Tylko N albo stałej zmiany <span style="color:${stColor};font-weight:700">${st==='ONLY_N'?'Tylko N':st==='ONLY_D'?'Tylko D':escapeHtml(st)}</span></label>
           <div class="weekdays-box" id="${fixedBoxId}"></div>
+        </div>
+        <div class="extra-shift-panel">
+          <label>Dodatkowe zmiany stałe - możesz wybrać kilka</label>
+          <div class="shift-type-group">${extraButtons || '<span style="color:var(--text2);font-size:.8rem">Brak własnych zmian do wyboru.</span>'}</div>
+          ${extraBlocks || '<div style="color:var(--text2);font-size:.78rem;margin-top:8px">Wybierz np. 7, 8 albo 19, aby pokazać osobny kalendarz dla tej opcji.</div>'}
         </div>
       </div>
       <div class="calendar-picker" id="${fixedDateCalId}" style="display:${isFixedShift(st)?'block':'none'}"></div>
@@ -1145,6 +1231,14 @@ function buildDefaultSchedule(year, month){
       if(s.manual){ result[emp.id][d]='X'; used.add(emp.id); return; }
       if(off){ result[emp.id][d]='U'; used.add(emp.id); return; }
       if(!isAvailableMonthly(emp,dow,key)){ result[emp.id][d]='X'; used.add(emp.id); return; }
+      const extraFixedShifts=normalizeExtraFixedShifts(s.extraFixedShifts);
+      for(const code of Object.keys(extraFixedShifts)){
+        const extra=ensureExtraShift(s,code);
+        if(extraShiftApplies(extra,d,dow) && canTakeMoreShifts(emp,key)){
+          result[emp.id][d]=code; used.add(emp.id); addStat(emp,code);
+          return;
+        }
+      }
       if(isFixedShift(s.shiftType)){
         if(fixedShiftApplies(s,d,dow) && canTakeMoreShifts(emp,key)){
           result[emp.id][d]=s.shiftType; used.add(emp.id); addStat(emp,s.shiftType);
@@ -1294,7 +1388,7 @@ function autoResetForNewMonth(){
     employees.forEach(emp=>{
       if(!emp.monthSettings) emp.monthSettings={};
       if(!emp.monthSettings[key]){
-        emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],manual:false,maxShifts:''};
+        emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
       }
     });
     saveEmp();
