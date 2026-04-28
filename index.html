@@ -290,7 +290,7 @@ let shifts       = JSON.parse(localStorage.getItem('grafik_shifts5') || 'null') 
   '19':{code:'19', from:'19:00', to:'1:00', color:'#ff9a6c'}
 };
 let currentMonth=null, currentYear=null;
-let newAvail='always', newStype='DN', newManual=false, newDaysOff=[], newFixedDays=defaultFixedDays(), newFixedDates=[], newMaxShifts='';
+let newAvail='always', newStype='DN', newManual=false, newDaysOff=[], newFixedDays=defaultFixedDays(), newFixedDatesByShift={}, newMaxShifts='';
 
 function saveEmp(){ localStorage.setItem('grafik_emp5', JSON.stringify(employees)); }
 function saveSched(){ localStorage.setItem('grafik_sched5', JSON.stringify(scheduleData)); }
@@ -393,7 +393,10 @@ function selectStype(btn,groupId){
   document.getElementById(groupId).querySelectorAll('.stype-btn').forEach(b=>b.classList.remove('sel-DN','sel-8','sel-7','sel-19','sel-CUSTOM'));
   const code=btn.dataset.val;
   btn.classList.add(['8','7','19'].includes(code)?'sel-'+code:(code==='DN'?'sel-DN':'sel-CUSTOM'));
-  if(groupId==='new-stype-group') newStype=code;
+  if(groupId==='new-stype-group'){
+    newStype=code;
+    renderNewFixedDateCalendar();
+  }
 }
 function toggleNewManual(){
   newManual=!newManual;
@@ -452,8 +455,23 @@ function toggleEmpFixedDay(id,d){
 
 function renderNewCalendar(){ renderCalendar('new-days-calendar', newDaysOff, 'toggleNewDayOff'); }
 function toggleNewDayOff(day){ toggleArrayValue(newDaysOff,day); renderNewCalendar(); }
-function renderNewFixedDateCalendar(){ renderShiftDateCalendar('new-fixed-date-calendar', newFixedDates, 'toggleNewFixedDate'); }
-function toggleNewFixedDate(day){ toggleArrayValue(newFixedDates,day); renderNewFixedDateCalendar(); }
+function renderNewFixedDateCalendar(){
+  const box=document.getElementById('new-fixed-date-calendar');
+  if(!box) return;
+  if(!isFixedShift(newStype)){
+    box.style.display='none';
+    box.innerHTML='';
+    return;
+  }
+  box.style.display='block';
+  renderShiftDateCalendar('new-fixed-date-calendar', normalizeFixedDates(newFixedDatesByShift[newStype]), 'toggleNewFixedDate', null, `Konkretne dni dla zmiany ${newStype}`);
+}
+function toggleNewFixedDate(day){
+  if(!isFixedShift(newStype)) return;
+  if(!Array.isArray(newFixedDatesByShift[newStype])) newFixedDatesByShift[newStype]=[];
+  toggleArrayValue(newFixedDatesByShift[newStype],day);
+  renderNewFixedDateCalendar();
+}
 function toggleEmpDayOff(id,day){
   const e=employees.find(x=>x.id===id); if(!e)return;
   if(!Array.isArray(e.daysOff)) e.daysOff=[];
@@ -1104,11 +1122,11 @@ function addEmployee(){
   const key=monthKeyFromPicker();
   const emp={id:Date.now(), name, monthSettings:{}};
   const max=parseInt(document.getElementById('new-max-shifts')?.value||'',10);
-  emp.monthSettings[key]={daysOff:[...newDaysOff], availability:newAvail, shiftType:newStype, fixedDays:[...newFixedDays], fixedDates:[...newFixedDates], extraFixedShifts:{}, manual:newManual, maxShifts:Number.isFinite(max)&&max>0?max:''};
+  emp.monthSettings[key]={daysOff:[...newDaysOff], availability:newAvail, shiftType:newStype, fixedDays:[...newFixedDays], fixedDates:[...normalizeFixedDates(newFixedDatesByShift[newStype])], extraFixedShifts:{}, manual:newManual, maxShifts:Number.isFinite(max)&&max>0?max:''};
   employees.push(emp);
   saveEmp(); renderEmployees();
   document.getElementById('new-emp-name').value='';
-  newDaysOff=[]; newAvail='always'; newStype='DN'; newManual=false; newFixedDays=defaultFixedDays(); newFixedDates=[]; newMaxShifts='';
+  newDaysOff=[]; newAvail='always'; newStype='DN'; newManual=false; newFixedDays=defaultFixedDays(); newFixedDatesByShift={}; newMaxShifts='';
   const maxInput=document.getElementById('new-max-shifts'); if(maxInput) maxInput.value='';
   document.getElementById('new-avail-group').querySelectorAll('.avail-btn').forEach((b,i)=>{b.classList.remove('sel-always','sel-weekday','sel-weekend');if(i===0)b.classList.add('sel-always');});
   document.getElementById('new-manual-toggle').classList.remove('active');
@@ -1362,7 +1380,7 @@ function syncCalendarDateFromEmployeePage(){
   document.getElementById('sel-month').value=m;
   document.getElementById('sel-year').value=y;
   newDaysOff=[];
-  newFixedDates=[];
+  newFixedDatesByShift={};
   renderNewCalendar();
   renderNewFixedDateCalendar();
   renderEmployees();
@@ -1373,7 +1391,7 @@ function syncCalendarDateFromSchedulePage(){
   if(empMonth) empMonth.value=document.getElementById('sel-month').value;
   if(empYear) empYear.value=document.getElementById('sel-year').value;
   newDaysOff=[];
-  newFixedDates=[];
+  newFixedDatesByShift={};
   renderNewCalendar();
   renderNewFixedDateCalendar();
   renderEmployees();
