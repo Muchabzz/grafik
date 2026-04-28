@@ -106,10 +106,17 @@
   .page{display:none}
   .page.active{display:block}
   .empty-state{text-align:center;padding:30px;color:var(--text2);font-size:.9rem}
+  .update-banner{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;display:none;align-items:center;gap:12px;background:#071a33;color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:12px 14px;box-shadow:0 12px 30px rgba(7,26,51,.35);max-width:min(92vw,520px);font-size:.9rem}
+  .update-banner.show{display:flex}
+  .update-banner button{border:none;border-radius:8px;background:#d71920;color:#fff;font-weight:800;padding:8px 12px;cursor:pointer;white-space:nowrap}
   @media(max-width:500px){header{grid-template-columns:40px 1fr 40px;padding:12px 14px}header h1{font-size:1.1rem}.tab{padding:6px 12px;font-size:.8rem}header .app-logo{width:36px;height:36px}}
 </style>
 </head>
 <body>
+<div id="update-banner" class="update-banner">
+  <span>Dostępna jest nowa wersja aplikacji.</span>
+  <button type="button" id="update-reload-btn">Odśwież</button>
+</div>
 <header>
   <img class="app-logo" src="icons/icon-192.png" alt="">
   <h1>Bonjour</h1>
@@ -1252,7 +1259,38 @@ init();
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+    let refreshing = false;
+    const banner = document.getElementById("update-banner");
+    const reloadBtn = document.getElementById("update-reload-btn");
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+
+    navigator.serviceWorker.register("./service-worker.js").then(registration => {
+      const showUpdate = worker => {
+        if (!worker || !banner || !reloadBtn) return;
+        banner.classList.add("show");
+        reloadBtn.onclick = () => {
+          banner.classList.remove("show");
+          worker.postMessage({ type: "SKIP_WAITING" });
+        };
+      };
+
+      if (registration.waiting) showUpdate(registration.waiting);
+
+      registration.addEventListener("updatefound", () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            showUpdate(worker);
+          }
+        });
+      });
+    }).catch(() => {});
   });
 }
 </script>

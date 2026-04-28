@@ -1,4 +1,4 @@
-const CACHE_NAME = "grafik-pwa-v6";
+const CACHE_NAME = "grafik-pwa-v7";
 const APP_FILES = [
   "./",
   "./index.html",
@@ -11,7 +11,6 @@ self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES))
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
@@ -30,4 +29,10 @@ self.addEventListener("fetch", event => {
       cached || fetch(event.request).catch(() => caches.match("./index.html"))
     )
   );
+});
+
+self.addEventListener("message", event => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
