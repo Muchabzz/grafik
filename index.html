@@ -180,7 +180,7 @@
       </div>
       <div class="calendar-picker" id="new-fixed-date-calendar"></div>
       <div class="extra-shift-panel">
-        <label>Dodatkowe zmiany staĹ‚e - moĹĽesz wybraÄ‡ kilka</label>
+        <label>Dodatkowe zmiany stale - mozesz wybrac kilka</label>
         <div class="shift-type-group" id="new-extra-shift-buttons"></div>
         <div id="new-extra-shift-blocks"></div>
       </div>
@@ -296,6 +296,9 @@ let shifts       = JSON.parse(localStorage.getItem('grafik_shifts5') || 'null') 
   '7':{code:'7', from:'7:00', to:'15:00', color:'#a5d6a7'},
   '19':{code:'19', from:'19:00', to:'1:00', color:'#ff9a6c'}
 };
+shifts['8']=shifts['8'] || {code:'8', from:'8:00', to:'16:00', color:'#4fc3f7'};
+shifts['7']=shifts['7'] || {code:'7', from:'7:00', to:'15:00', color:'#a5d6a7'};
+shifts['19']=shifts['19'] || {code:'19', from:'19:00', to:'1:00', color:'#ff9a6c'};
 let currentMonth=null, currentYear=null;
 let newAvail='always', newStype='DN', newManual=false, newDaysOff=[], newFixedDays=defaultFixedDays(), newFixedDatesByShift={}, newExtraFixedShifts={}, newMaxShifts='';
 
@@ -388,12 +391,11 @@ function isAvailable(emp,dow){
   if(a==='weekend') return isWeekend(dow);
   return true;
 }
-function isFixedShift(code){ return code && code!=='DN' && code!=='ONLY_N' && code!=='ONLY_D' && code!=='NONE'; }
+function isFixedShift(code){ return code && code!=='DN' && code!=='ONLY_N' && code!=='ONLY_D'; }
 function baseShiftLabel(code){
   if(code==='DN') return 'D/N';
   if(code==='ONLY_N') return 'Tylko N';
   if(code==='ONLY_D') return 'Tylko D';
-  if(code==='NONE') return 'Bez D/N';
   return escapeHtml(code);
 }
 function baseShiftClass(code){
@@ -411,7 +413,7 @@ function selectStype(btn,groupId){
   document.getElementById(groupId).querySelectorAll('.stype-btn').forEach(b=>b.classList.remove('sel-DN','sel-8','sel-7','sel-19','sel-CUSTOM'));
   const code=btn.dataset.val;
   if(groupId==='new-stype-group'){
-    newStype=(code==='DN' && newStype==='DN') ? 'NONE' : code;
+    newStype=code;
     renderShiftTypeButtons();
     renderNewFixedDateCalendar();
     renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay');
@@ -510,10 +512,10 @@ function renderNewExtraShiftControls(){
     const active=!!newExtraFixedShifts[code];
     const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
     return `<button class="stype-btn ${active?cls:''}" onclick="toggleNewExtraShift(${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
-  }).join('') || '<span style="color:var(--text2);font-size:.8rem">Brak wĹ‚asnych zmian do wyboru.</span>';
+  }).join('') || '<span style="color:var(--text2);font-size:.8rem">Brak wlasnych zmian do wyboru.</span>';
   const selectedCodes=Object.keys(normalizeExtraFixedShifts(newExtraFixedShifts));
   if(!selectedCodes.length){
-    blocksBox.innerHTML='<div style="color:var(--text2);font-size:.78rem;margin-top:8px">Wybierz np. 7, 8 albo 19, aby pokazaÄ‡ osobny kalendarz dla tej opcji.</div>';
+    blocksBox.innerHTML='<div style="color:var(--text2);font-size:.78rem;margin-top:8px">Wybierz np. 7, 8 albo 19, aby pokazac osobny kalendarz dla tej opcji.</div>';
     return;
   }
   blocksBox.innerHTML=`<div class="extra-shift-grid">${selectedCodes.map(code=>{
@@ -601,7 +603,7 @@ function renderShiftDateCalendar(containerId, selectedDays, callbackName, empId=
 
 function renderShiftTypeButtons(){
   const box=document.getElementById('new-stype-group');
-  const codes=['DN','ONLY_D','ONLY_N','NONE'];
+  const codes=['DN','ONLY_D','ONLY_N'];
   box.innerHTML=codes.map(code=>{
     return `<button class="stype-btn ${newStype===code?baseShiftClass(code):''}" data-val="${code}" onclick="selectStype(this,'new-stype-group')">${baseShiftLabel(code)}</button>`;
   }).join('');
@@ -639,7 +641,7 @@ function renderEmployees(){
     const stColor=st==='DN'?'var(--shiftD)':getShiftColor(st);
     const fixedBoxId=`fd-${emp.id}`;
     const calId=`cal-${emp.id}`;
-    const stButtons=['DN','ONLY_D','ONLY_N','NONE'].map(code=>{
+    const stButtons=['DN','ONLY_D','ONLY_N'].map(code=>{
       const sel=st===code;
       return `<button class="stype-btn ${sel?baseShiftClass(code):''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${baseShiftLabel(code)}</button>`;
     }).join('');
@@ -683,7 +685,6 @@ function getShiftColor(code){
   if(code==='N')return'var(--shiftN)';
   if(code==='ONLY_D')return'var(--shiftD)';
   if(code==='ONLY_N')return'var(--shiftN)';
-  if(code==='NONE')return'var(--text2)';
   if(code==='X')return'#071a33';
   if(code==='U')return'#aaaaaa';
   if(shifts[code])return shifts[code].color || 'var(--accent)';
@@ -698,7 +699,7 @@ function addCustomShift(){
   const colorInput=document.getElementById('custom-shift-color');
   let code=(codeInput?.value||'').trim().toUpperCase();
   if(!code){alert('Wpisz kod zmiany.');return;}
-  if(['D','N','X','U','DN','ONLY_D','ONLY_N','NONE'].includes(code)){alert('Ten kod jest zarezerwowany.');return;}
+  if(['D','N','X','U','DN','ONLY_D','ONLY_N'].includes(code)){alert('Ten kod jest zarezerwowany.');return;}
   if(shifts[code]){alert('Taka zmiana już istnieje.');return;}
   shifts[code]={
     code,
@@ -877,7 +878,6 @@ function buildDefaultSchedule(year, month){
       if(!canTakeMoreShifts(emp)) return false;
       const st=emp.shiftType||'DN';
       const fdays=normalizeFixedDays(emp.fixedDays);
-      if(st==='NONE') return false;
       if((st==='ONLY_N' || st==='ONLY_D') && !fdays.includes(dow)) return false;
       if(shift==='D' && ctx.prev[emp.id]==='N') return false;
       if(shift==='N' && wouldBeThirdNight(emp,ctx)) return false;
@@ -1116,6 +1116,7 @@ function monthKeyFromPicker(){
 }
 function normalizeBaseShiftSetting(setting){
   if(!setting) return setting;
+  if(setting.shiftType==='NONE') setting.shiftType='DN';
   if(isFixedShift(setting.shiftType)){
     const code=setting.shiftType;
     if(!setting.extraFixedShifts || typeof setting.extraFixedShifts!=='object' || Array.isArray(setting.extraFixedShifts)) setting.extraFixedShifts={};
@@ -1169,7 +1170,7 @@ function editEmployeeName(id){
   if(name && name.trim()){ emp.name=name.trim(); saveEmp(); renderEmployees(); }
 }
 function setEmpAvail(id,v){const e=employees.find(e=>e.id===id);if(e){getMonthSetting(e).availability=v;saveEmp();renderEmployees();}}
-function setEmpStype(id,v){const e=employees.find(e=>e.id===id);if(e){const s=getMonthSetting(e);s.shiftType=(v==='DN' && (s.shiftType||'DN')==='DN')?'NONE':v;s.fixedDays=normalizeFixedDays(s.fixedDays);saveEmp();renderEmployees();}}
+function setEmpStype(id,v){const e=employees.find(e=>e.id===id);if(e){const s=getMonthSetting(e);s.shiftType=v;s.fixedDays=normalizeFixedDays(s.fixedDays);saveEmp();renderEmployees();}}
 function toggleManual(id){const e=employees.find(e=>e.id===id);if(e){const s=getMonthSetting(e);s.manual=!s.manual;saveEmp();renderEmployees();}}
 function setEmpMaxShifts(id,v){
   const e=employees.find(e=>e.id===id); if(!e)return;
@@ -1248,7 +1249,7 @@ function renderEmployees(){
     const fixedBoxId=`fd-${emp.id}`;
     const fixedDateCalId=`fdate-${emp.id}`;
     const calId=`cal-${emp.id}`;
-    const stButtons=['DN','ONLY_D','ONLY_N','NONE'].map(code=>{
+    const stButtons=['DN','ONLY_D','ONLY_N'].map(code=>{
       const sel=st===code;
       return `<button class="stype-btn ${sel?baseShiftClass(code):''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${baseShiftLabel(code)}</button>`;
     }).join('');
@@ -1311,9 +1312,9 @@ function renderEmployees(){
           <div class="weekdays-box" id="${fixedBoxId}"></div>
         </div>
         <div class="extra-shift-panel">
-          <label>Dodatkowe zmiany stałe - możesz wybrać kilka</label>
-          <div class="shift-type-group">${extraButtons || '<span style="color:var(--text2);font-size:.8rem">Brak własnych zmian do wyboru.</span>'}</div>
-          ${extraBlocks ? `<div class="extra-shift-grid">${extraBlocks}</div>` : '<div style="color:var(--text2);font-size:.78rem;margin-top:8px">Wybierz np. 7, 8 albo 19, aby pokazać osobny kalendarz dla tej opcji.</div>'}
+          <label>Dodatkowe zmiany stale - mozesz wybrac kilka</label>
+          <div class="shift-type-group">${extraButtons || '<span style="color:var(--text2);font-size:.8rem">Brak wlasnych zmian do wyboru.</span>'}</div>
+          ${extraBlocks ? `<div class="extra-shift-grid">${extraBlocks}</div>` : '<div style="color:var(--text2);font-size:.78rem;margin-top:8px">Wybierz np. 7, 8 albo 19, aby pokazac osobny kalendarz dla tej opcji.</div>'}
         </div>
       </div>
       <div class="calendar-picker" id="${fixedDateCalId}" style="display:${isFixedShift(st)?'block':'none'}"></div>
@@ -1381,7 +1382,6 @@ function buildDefaultSchedule(year, month){
       if(!canTakeMoreShifts(emp,key)) return false;
       const st=s.shiftType||'DN';
       const fdays=normalizeFixedDays(s.fixedDays);
-      if(st==='NONE') return false;
       if(isFixedShift(st) && usesExactShiftDates(s) && !normalizeFixedDates(s.fixedDates).includes(d)) return false;
       if((st==='ONLY_N' || st==='ONLY_D') && !fdays.includes(dow)) return false;
       if(shift==='D' && ctx.prev[emp.id]==='N') return false;
