@@ -88,6 +88,7 @@
   table.sched th.day-fri,table.sched td.day-fri{background:rgba(255,154,108,.06)}
   table.sched td.emp-name-cell{text-align:left;padding-left:8px;font-weight:600;min-width:110px;background:var(--surface2);position:sticky;left:0;z-index:2}
   table.sched td.emp-name-cell.is-manual{background:#fff1f2}
+  table.sched tr.employee-gap td{height:14px;background:#fff;border-left:none;border-right:none}
   table.sched select.shift-sel{background:transparent;border:none;color:var(--text);font-size:.75rem;padding:0;cursor:pointer;width:48px;text-align:center;font-weight:700}
   table.sched td.manual-cell{background:repeating-linear-gradient(45deg,#fff5f5,#fff5f5 4px,#ffe8ea 4px,#ffe8ea 8px)}
   table.sched input.manual-input,table.sched select.manual-input{background:transparent;border:none;color:#a70f16;font-size:.75rem;font-weight:700;width:42px;text-align:center;outline:none;padding:0;cursor:pointer}
@@ -282,6 +283,33 @@ const WEEKDAY_ORDER=[1,2,3,4,5,6,0];
 const WEEKDAY_NAMES={1:'Pn',2:'Wt',3:'Śr',4:'Cz',5:'Pt',6:'Sb',0:'Nd'};
 function defaultFixedDays(){ return [1,2,3,4,5,6,0]; }
 function normalizeFixedDays(days){ return Array.isArray(days) && days.length ? days : defaultFixedDays(); }
+const DEFAULT_EMPLOYEE_NAMES=[
+  'Maria','Bernadetta','Józek','Marzena','Karolina','Ania','Angelika',
+  'Zuza','Edyta','Natalia K.','Kamil','Paweł','Kuba','Mateusz','Franciszek'
+];
+function makeDefaultEmployee(name,index){
+  return { id: Date.now()+index, name, separatorBefore:name==='Franciszek', monthSettings:{} };
+}
+function ensureDefaultEmployees(){
+  if(localStorage.getItem('grafik_default_employees_seeded')==='1') return;
+  const existing=new Set(employees.map(e=>String(e.name||'').trim().toLowerCase()));
+  let changed=false;
+  DEFAULT_EMPLOYEE_NAMES.forEach((name,index)=>{
+    if(!existing.has(name.toLowerCase())){
+      employees.push(makeDefaultEmployee(name,index));
+      existing.add(name.toLowerCase());
+      changed=true;
+    }
+  });
+  employees.forEach(emp=>{
+    if(String(emp.name||'').trim().toLowerCase()==='franciszek' && !emp.separatorBefore){
+      emp.separatorBefore=true;
+      changed=true;
+    }
+  });
+  localStorage.setItem('grafik_default_employees_seeded','1');
+  if(changed) saveEmp();
+}
 
 function showPage(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -711,6 +739,7 @@ function renderScheduleTable(year,month,days){
   html+='</tr></thead><tbody>';
 
   employees.forEach(emp=>{
+    if(emp.separatorBefore) html+=`<tr class="employee-gap"><td colspan="${days+1}"></td></tr>`;
     const s=getMonthSetting(emp,key);
     const st=s.shiftType||'DN', mn=!!s.manual;
     html+=`<tr><td class="emp-name-cell ${mn?'is-manual':''}">${mn?'✏️':''} ${escapeHtml(emp.name)}<br><span style="color:${mn?'#d71920':(st==='DN'?'var(--shiftD)':getShiftColor(st))};font-size:.65rem;font-weight:700">${mn?'':st==='ONLY_N'?'Tylko N':st==='ONLY_D'?'Tylko D':escapeHtml(st)}</span></td>`;
@@ -838,6 +867,7 @@ ${Array.from({length:days},()=>'<Column ss:Width="17"/>').join('')}
   }
   xml+=cell('S','total')+'</Row>';
   employees.forEach(emp=>{
+    if(emp.separatorBefore) xml+=`<Row ss:Height="10">${cell('', 'Default', 'String', days+1)}</Row>`;
     const s=getMonthSetting(emp,key);
     xml+='<Row ss:Height="15">'+cell(emp.name,'emp');
     for(let d=1;d<=days;d++){
@@ -1201,6 +1231,7 @@ function autoResetForNewMonth(){
 
 function init(){
   pruneOldHistory();
+  ensureDefaultEmployees();
   const now=new Date();
   const currentMonthValue=now.getMonth();
   const currentYearValue=now.getFullYear();
