@@ -165,7 +165,7 @@
       </div>
       <div class="form-row" style="gap:16px">
         <div>
-          <label>Baza grafiku</label>
+          <label>Baza grafiku i dodatki</label>
           <div class="shift-type-group" id="new-stype-group"></div>
         </div>
         <div style="min-width:260px">
@@ -313,7 +313,7 @@ const WEEKDAY_NAMES={1:'Pn',2:'Wt',3:'Śr',4:'Cz',5:'Pt',6:'Sb',0:'Nd'};
 function defaultFixedDays(){ return [1,2,3,4,5,6,0]; }
 function normalizeFixedDays(days){ return Array.isArray(days) && days.length ? days : defaultFixedDays(); }
 function normalizeFixedDates(days){ return Array.isArray(days) ? days : []; }
-function getFixedShiftCodes(){ return Object.keys(shifts); }
+function getFixedShiftCodes(){ return [...new Set(['7','8','19',...Object.keys(shifts||{})])]; }
 function normalizeExtraFixedShifts(extra){
   return extra && typeof extra==='object' && !Array.isArray(extra) ? extra : {};
 }
@@ -491,6 +491,7 @@ function copyExtraFixedShifts(extraMap){
 function toggleNewExtraShift(code){
   if(newExtraFixedShifts[code]) delete newExtraFixedShifts[code];
   else newExtraFixedShifts[code]={fixedDays:defaultFixedDays(),fixedDates:[]};
+  renderShiftTypeButtons();
   renderNewExtraShiftControls();
 }
 function toggleNewExtraShiftDay(code,dow){
@@ -603,8 +604,13 @@ function renderShiftDateCalendar(containerId, selectedDays, callbackName, empId=
 
 function renderShiftTypeButtons(){
   const box=document.getElementById('new-stype-group');
-  const codes=['DN','ONLY_D','ONLY_N'];
+  const codes=['DN','ONLY_D','ONLY_N',...getFixedShiftCodes()];
   box.innerHTML=codes.map(code=>{
+    if(isFixedShift(code)){
+      const active=!!newExtraFixedShifts[code];
+      const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
+      return `<button class="stype-btn ${active?cls:''}" data-val="${code}" onclick="toggleNewExtraShift(${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+    }
     return `<button class="stype-btn ${newStype===code?baseShiftClass(code):''}" data-val="${code}" onclick="selectStype(this,'new-stype-group')">${baseShiftLabel(code)}</button>`;
   }).join('');
 }
@@ -1249,11 +1255,16 @@ function renderEmployees(){
     const fixedBoxId=`fd-${emp.id}`;
     const fixedDateCalId=`fdate-${emp.id}`;
     const calId=`cal-${emp.id}`;
-    const stButtons=['DN','ONLY_D','ONLY_N'].map(code=>{
+    const extraCodes=getFixedShiftCodes();
+    const stButtons=['DN','ONLY_D','ONLY_N',...extraCodes].map(code=>{
+      if(isFixedShift(code)){
+        const active=!!extraFixedShifts[code];
+        const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
+        return `<button class="stype-btn ${active?cls:''}" onclick="toggleEmpExtraShift(${emp.id},${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+      }
       const sel=st===code;
       return `<button class="stype-btn ${sel?baseShiftClass(code):''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${baseShiftLabel(code)}</button>`;
     }).join('');
-    const extraCodes=getFixedShiftCodes();
     const extraButtons=extraCodes.map(code=>{
       const active=!!extraFixedShifts[code];
       const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
@@ -1300,7 +1311,7 @@ function renderEmployees(){
           </div>
         </div>
         <div>
-          <label>Baza grafiku w tym miesiącu</label>
+          <label>Baza grafiku i dodatki w tym miesiacu</label>
           <div class="shift-type-group" id="sg-${emp.id}">${stButtons}</div>
         </div>
         <div class="max-shifts-field">
