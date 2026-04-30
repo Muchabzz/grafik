@@ -489,8 +489,12 @@ function copyExtraFixedShifts(extraMap){
   return out;
 }
 function toggleNewExtraShift(code){
+  code=String(code);
   if(newExtraFixedShifts[code]) delete newExtraFixedShifts[code];
   else newExtraFixedShifts[code]={fixedDays:defaultFixedDays(),fixedDates:[]};
+  refreshNewExtraShiftUI();
+}
+function refreshNewExtraShiftUI(){
   renderShiftTypeButtons();
   renderNewExtraShiftControls();
 }
@@ -512,7 +516,7 @@ function renderNewExtraShiftControls(){
   btnBox.innerHTML=codes.map(code=>{
     const active=!!newExtraFixedShifts[code];
     const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
-    return `<button class="stype-btn ${active?cls:''}" onclick="toggleNewExtraShift(${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+    return `<button type="button" class="stype-btn ${active?cls:''}" onclick="toggleNewExtraShift(${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
   }).join('') || '<span style="color:var(--text2);font-size:.8rem">Brak wlasnych zmian do wyboru.</span>';
   const selectedCodes=Object.keys(normalizeExtraFixedShifts(newExtraFixedShifts));
   if(!selectedCodes.length){
@@ -609,9 +613,9 @@ function renderShiftTypeButtons(){
     if(isFixedShift(code)){
       const active=!!newExtraFixedShifts[code];
       const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
-      return `<button class="stype-btn ${active?cls:''}" data-val="${code}" onclick="toggleNewExtraShift(${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+      return `<button type="button" class="stype-btn ${active?cls:''}" data-val="${code}" onclick="toggleNewExtraShift(${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
     }
-    return `<button class="stype-btn ${newStype===code?baseShiftClass(code):''}" data-val="${code}" onclick="selectStype(this,'new-stype-group')">${baseShiftLabel(code)}</button>`;
+    return `<button type="button" class="stype-btn ${newStype===code?baseShiftClass(code):''}" data-val="${code}" onclick="selectStype(this,'new-stype-group')">${baseShiftLabel(code)}</button>`;
   }).join('');
 }
 
@@ -649,7 +653,7 @@ function renderEmployees(){
     const calId=`cal-${emp.id}`;
     const stButtons=['DN','ONLY_D','ONLY_N'].map(code=>{
       const sel=st===code;
-      return `<button class="stype-btn ${sel?baseShiftClass(code):''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${baseShiftLabel(code)}</button>`;
+      return `<button type="button" class="stype-btn ${sel?baseShiftClass(code):''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${baseShiftLabel(code)}</button>`;
     }).join('');
     setTimeout(()=>{ if(document.getElementById(fixedBoxId)) renderWeekdayButtons(fixedBoxId,fixedDays,'toggleEmpFixedDay',emp.id); if(document.getElementById(calId)) renderCalendar(calId,emp.daysOff||[],'toggleEmpDayOff',emp.id); },0);
     return `<div class="emp-item${mn?' manual-mode':''}">
@@ -1198,6 +1202,7 @@ function toggleEmpFixedDate(id,day){
   toggleArrayValue(s.fixedDates,day); saveEmp(); renderEmployees();
 }
 function toggleEmpExtraShift(id,code){
+  code=String(code);
   const e=employees.find(x=>x.id===id); if(!e)return;
   const s=getMonthSetting(e);
   if(!s.extraFixedShifts || typeof s.extraFixedShifts!=='object' || Array.isArray(s.extraFixedShifts)) s.extraFixedShifts={};
@@ -1260,15 +1265,15 @@ function renderEmployees(){
       if(isFixedShift(code)){
         const active=!!extraFixedShifts[code];
         const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
-        return `<button class="stype-btn ${active?cls:''}" onclick="toggleEmpExtraShift(${emp.id},${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+        return `<button type="button" class="stype-btn ${active?cls:''}" onclick="toggleEmpExtraShift(${emp.id},${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
       }
       const sel=st===code;
-      return `<button class="stype-btn ${sel?baseShiftClass(code):''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${baseShiftLabel(code)}</button>`;
+      return `<button type="button" class="stype-btn ${sel?baseShiftClass(code):''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${baseShiftLabel(code)}</button>`;
     }).join('');
     const extraButtons=extraCodes.map(code=>{
       const active=!!extraFixedShifts[code];
       const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
-      return `<button class="stype-btn ${active?cls:''}" onclick="toggleEmpExtraShift(${emp.id},${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+      return `<button type="button" class="stype-btn ${active?cls:''}" onclick="toggleEmpExtraShift(${emp.id},${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
     }).join('');
     const extraBlocks=Object.keys(extraFixedShifts).map(code=>{
       const weekdayId=`exw-${emp.id}-${String(code).replace(/[^A-Za-z0-9_]/g,'_')}`;
