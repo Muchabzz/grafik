@@ -186,7 +186,14 @@
       </div>
       <div class="form-row" style="margin-top:6px">
         <div>
-          <label>Miesiąc kalendarza dni wolnych</label>
+          <label>Tryb kalendarza</label>
+          <div class="avail-group" id="new-day-mode-group">
+            <button class="avail-btn sel-always" type="button" onclick="setNewDayMode('off')">Dni wolne</button>
+            <button class="avail-btn" type="button" onclick="setNewDayMode('available')">Dni dostępności</button>
+          </div>
+        </div>
+        <div>
+          <label>Miesiąc kalendarza</label>
           <select id="emp-cal-month" onchange="syncCalendarDateFromEmployeePage()">
             <option value="0">Styczeń</option><option value="1">Luty</option><option value="2">Marzec</option>
             <option value="3">Kwiecień</option><option value="4">Maj</option><option value="5">Czerwiec</option>
@@ -300,7 +307,7 @@ shifts['8']=shifts['8'] || {code:'8', from:'8:00', to:'16:00', color:'#4fc3f7'};
 shifts['7']=shifts['7'] || {code:'7', from:'7:00', to:'15:00', color:'#a5d6a7'};
 shifts['19']=shifts['19'] || {code:'19', from:'19:00', to:'1:00', color:'#ff9a6c'};
 let currentMonth=null, currentYear=null;
-let newAvail='always', newStype='DN', newManual=false, newDaysOff=[], newFixedDays=defaultFixedDays(), newFixedDatesByShift={}, newExtraFixedShifts={}, newMaxShifts='';
+let newAvail='always', newStype='DN', newManual=false, newDaysOff=[], newDayMode='off', newAvailableDays=[], newFixedDays=defaultFixedDays(), newFixedDatesByShift={}, newExtraFixedShifts={}, newMaxShifts='';
 
 function saveEmp(){ localStorage.setItem('grafik_emp5', JSON.stringify(employees)); }
 function saveSched(){ localStorage.setItem('grafik_sched5', JSON.stringify(scheduleData)); }
@@ -313,6 +320,15 @@ const WEEKDAY_NAMES={1:'Pn',2:'Wt',3:'Śr',4:'Cz',5:'Pt',6:'Sb',0:'Nd'};
 function defaultFixedDays(){ return [1,2,3,4,5,6,0]; }
 function normalizeFixedDays(days){ return Array.isArray(days) && days.length ? days : defaultFixedDays(); }
 function normalizeFixedDates(days){ return Array.isArray(days) ? days : []; }
+function normalizeDayMode(mode){ return mode==='available' ? 'available' : 'off'; }
+function normalizeAvailableDays(days){ return Array.isArray(days) ? days : []; }
+function selectedDaysForMode(setting){
+  return normalizeDayMode(setting?.daySelectMode)==='available' ? normalizeAvailableDays(setting.availableDays) : normalizeFixedDates(setting?.daysOff);
+}
+function isBlockedByDaySelection(setting,day){
+  if(normalizeDayMode(setting?.daySelectMode)==='available') return !normalizeAvailableDays(setting.availableDays).includes(day);
+  return normalizeFixedDates(setting?.daysOff).includes(day);
+}
 function getFixedShiftCodes(){ return [...new Set(['7','8','19',...Object.keys(shifts||{})])]; }
 function normalizeExtraFixedShifts(extra){
   return extra && typeof extra==='object' && !Array.isArray(extra) ? extra : {};
@@ -546,8 +562,19 @@ function toggleEmpFixedDay(id,d){
   toggleArrayValue(e.fixedDays,d); saveEmp(); renderEmployees();
 }
 
-function renderNewCalendar(){ renderCalendar('new-days-calendar', newDaysOff, 'toggleNewDayOff'); }
-function toggleNewDayOff(day){ toggleArrayValue(newDaysOff,day); renderNewCalendar(); }
+function renderNewCalendar(){ renderCalendar('new-days-calendar', newDayMode==='available'?newAvailableDays:newDaysOff, 'toggleNewDayOff', null, newDayMode); }
+function toggleNewDayOff(day){ toggleArrayValue(newDayMode==='available'?newAvailableDays:newDaysOff,day); renderNewCalendar(); }
+function setNewDayMode(mode){
+  newDayMode=normalizeDayMode(mode);
+  const group=document.getElementById('new-day-mode-group');
+  if(group){
+    group.querySelectorAll('.avail-btn').forEach((b,i)=>{
+      b.classList.remove('sel-always','sel-weekday');
+      if((newDayMode==='off'&&i===0)||(newDayMode==='available'&&i===1)) b.classList.add(i===0?'sel-always':'sel-weekday');
+    });
+  }
+  renderNewCalendar();
+}
 function renderNewFixedDateCalendar(){
   const box=document.getElementById('new-fixed-date-calendar');
   if(!box) return;
@@ -570,12 +597,13 @@ function toggleEmpDayOff(id,day){
   if(!Array.isArray(e.daysOff)) e.daysOff=[];
   toggleArrayValue(e.daysOff,day); saveEmp(); renderEmployees();
 }
-function renderCalendar(containerId, daysOff, callbackName, empId=null){
+function renderCalendar(containerId, daysOff, callbackName, empId=null, mode='off'){
   const {month,year}=getSelectedMonthYear();
   const days=getDaysInMonth(year,month);
   const firstDow=getDow(year,month,1);
   const mondayIndex=(firstDow+6)%7;
-  let html=`<div class="calendar-head"><strong>${MONTHS_PL[month]} ${year} — ${days} dni</strong><span>Kliknij dzień wolny/urlop</span></div>`;
+  const availableMode=normalizeDayMode(mode)==='available';
+  let html=`<div class="calendar-head"><strong>${MONTHS_PL[month]} ${year} - ${days} dni</strong><span>${availableMode?'Kliknij dzień dostępności':'Kliknij dzień wolny/urlop'}</span></div>`;
   html+='<div class="calendar-grid">';
   ['Pn','Wt','Śr','Cz','Pt','Sb','Nd'].forEach(x=>html+=`<div class="cal-label">${x}</div>`);
   for(let i=0;i<mondayIndex;i++) html+='<button class="cal-day empty"></button>';
@@ -583,7 +611,7 @@ function renderCalendar(containerId, daysOff, callbackName, empId=null){
     const off=daysOff.includes(d);
     html+=`<button class="cal-day ${off?'off':''}" onclick="${callbackName}(${empId!==null?empId+',':''}${d})">${d}</button>`;
   }
-  html+='</div><div class="cal-help">Czerwone dni to dni wolne/urlop. Kalendarz pokazuje miesiąc wybrany w zakładce „Grafik”.</div>';
+  html+=`</div><div class="cal-help">${availableMode?'Czerwone dni to dni, w które pracownik jest dostępny. Pozostałe dni generator traktuje jako niedostępne.':'Czerwone dni to dni wolne/urlop.'} Kalendarz pokazuje miesiąc wybrany w zakładce Grafik.</div>`;
   document.getElementById(containerId).innerHTML=html;
 }
 function renderShiftDateCalendar(containerId, selectedDays, callbackName, empId=null, title='Konkretne dni tej zmiany', extraArg=null){
@@ -1163,7 +1191,7 @@ ${Array.from({length:days},()=>'<Column ss:Width="24"/>').join('')}`;
     for(let d=1;d<=days;d++){
       const dow=getDow(year,month,d);
       const raw=scheduleData[key]?.[emp.id]?.[d] || '';
-      const markedOff=(setting.daysOff||[]).includes(d);
+      const markedOff=isBlockedByDaySelection(setting,d);
       const display=markedOff ? 'X' : (raw==='X' || raw==='U' ? '' : raw);
       xml+=cell(display,cellStyle(display,dow,markedOff));
     }
@@ -1212,6 +1240,9 @@ function monthKeyFromPicker(){
 }
 function normalizeBaseShiftSetting(setting){
   if(!setting) return setting;
+  setting.daySelectMode=normalizeDayMode(setting.daySelectMode);
+  if(!Array.isArray(setting.availableDays)) setting.availableDays=[];
+  if(!Array.isArray(setting.daysOff)) setting.daysOff=[];
   if(setting.shiftType==='NONE') setting.shiftType='DN';
   if(isFixedShift(setting.shiftType)){
     const code=setting.shiftType;
@@ -1230,6 +1261,8 @@ function ensureMonthSettings(emp,key=monthKeyFromPicker()){
   if(!emp.monthSettings[key]){
     emp.monthSettings[key]={
       daysOff:[],
+      daySelectMode:emp.daySelectMode || 'off',
+      availableDays:[...normalizeAvailableDays(emp.availableDays)],
       availability:emp.availability || 'always',
       shiftType:emp.shiftType || 'DN',
       fixedDays:[...normalizeFixedDays(emp.fixedDays)],
@@ -1248,7 +1281,7 @@ function resetEmployeeMonth(id){
   const emp=employees.find(e=>e.id===id); if(!emp)return;
   const key=monthKeyFromPicker();
   if(!emp.monthSettings) emp.monthSettings={};
-  emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
+  emp.monthSettings[key]={daysOff:[],daySelectMode:'off',availableDays:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
   saveEmp(); renderEmployees(); renderNewCalendar();
 }
 function resetAllEmployeesMonth(){
@@ -1256,7 +1289,7 @@ function resetAllEmployeesMonth(){
   if(!confirm('Zresetować ustawienia wszystkich pracowników dla tego miesiąca?')) return;
   employees.forEach(emp=>{
     if(!emp.monthSettings) emp.monthSettings={};
-    emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
+    emp.monthSettings[key]={daysOff:[],daySelectMode:'off',availableDays:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
   });
   saveEmp(); renderEmployees(); renderNewCalendar();
 }
@@ -1311,8 +1344,22 @@ function toggleEmpExtraShiftDate(id,code,day){
 function toggleEmpDayOff(id,day){
   const e=employees.find(x=>x.id===id); if(!e)return;
   const s=getMonthSetting(e);
+  if(normalizeDayMode(s.daySelectMode)==='available'){
+    if(!Array.isArray(s.availableDays)) s.availableDays=[];
+    toggleArrayValue(s.availableDays,day);
+  } else {
+    if(!Array.isArray(s.daysOff)) s.daysOff=[];
+    toggleArrayValue(s.daysOff,day);
+  }
+  saveEmp(); renderEmployees();
+}
+function setEmpDayMode(id,mode){
+  const e=employees.find(x=>x.id===id); if(!e)return;
+  const s=getMonthSetting(e);
+  s.daySelectMode=normalizeDayMode(mode);
+  if(!Array.isArray(s.availableDays)) s.availableDays=[];
   if(!Array.isArray(s.daysOff)) s.daysOff=[];
-  toggleArrayValue(s.daysOff,day); saveEmp(); renderEmployees();
+  saveEmp(); renderEmployees();
 }
 function addEmployee(){
   const name=document.getElementById('new-emp-name').value.trim();
@@ -1320,14 +1367,15 @@ function addEmployee(){
   const key=monthKeyFromPicker();
   const emp={id:Date.now(), name, monthSettings:{}};
   const max=parseInt(document.getElementById('new-max-shifts')?.value||'',10);
-  emp.monthSettings[key]={daysOff:[...newDaysOff], availability:newAvail, shiftType:newStype, fixedDays:[...newFixedDays], fixedDates:[...normalizeFixedDates(newFixedDatesByShift[newStype])], extraFixedShifts:copyExtraFixedShifts(newExtraFixedShifts), manual:newManual, maxShifts:Number.isFinite(max)&&max>0?max:''};
+  emp.monthSettings[key]={daysOff:[...newDaysOff], daySelectMode:newDayMode, availableDays:[...newAvailableDays], availability:newAvail, shiftType:newStype, fixedDays:[...newFixedDays], fixedDates:[...normalizeFixedDates(newFixedDatesByShift[newStype])], extraFixedShifts:copyExtraFixedShifts(newExtraFixedShifts), manual:newManual, maxShifts:Number.isFinite(max)&&max>0?max:''};
   employees.push(emp);
   saveEmp(); renderEmployees();
   document.getElementById('new-emp-name').value='';
-  newDaysOff=[]; newAvail='always'; newStype='DN'; newManual=false; newFixedDays=defaultFixedDays(); newFixedDatesByShift={}; newExtraFixedShifts={}; newMaxShifts='';
+  newDaysOff=[]; newDayMode='off'; newAvailableDays=[]; newAvail='always'; newStype='DN'; newManual=false; newFixedDays=defaultFixedDays(); newFixedDatesByShift={}; newExtraFixedShifts={}; newMaxShifts='';
   const maxInput=document.getElementById('new-max-shifts'); if(maxInput) maxInput.value='';
   document.getElementById('new-avail-group').querySelectorAll('.avail-btn').forEach((b,i)=>{b.classList.remove('sel-always','sel-weekday','sel-weekend');if(i===0)b.classList.add('sel-always');});
   document.getElementById('new-manual-toggle').classList.remove('active');
+  setNewDayMode('off');
   renderShiftTypeButtons(); renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay'); renderNewCalendar(); renderNewFixedDateCalendar(); renderNewExtraShiftControls();
 }
 function renderEmployees(){
@@ -1335,7 +1383,7 @@ function renderEmployees(){
   if(!employees.length){list.innerHTML='<div class="empty-state">Brak pracowników.</div>';return;}
   const key=monthKeyFromPicker();
   const {month,year}=getSelectedMonthYear();
-  list.innerHTML=`<div class="info-box"><strong>Edytujesz ustawienia dla:</strong> ${MONTHS_PL[month]} ${year}. Pracownicy zostają w aplikacji, ale dni wolne, typ zmiany i tryb ręczny są osobne dla każdego miesiąca.</div>
+  list.innerHTML=`<div class="info-box"><strong>Edytujesz ustawienia dla:</strong> ${MONTHS_PL[month]} ${year}. Pracownicy zostają w aplikacji, ale dni wolne/dostępności, typ zmiany i tryb ręczny są osobne dla każdego miesiąca.</div>
   <button class="btn btn-danger" onclick="resetAllEmployeesMonth()" style="margin-bottom:12px">Reset ustawień pracowników dla tego miesiąca</button>` + employees.map(emp=>{
     const s=getMonthSetting(emp,key);
     const av=s.availability||'always', st=s.shiftType||'DN', mn=!!s.manual;
@@ -1380,7 +1428,7 @@ function renderEmployees(){
         renderExtraWeekdayButtons(`exw-${emp.id}-${safe}`,normalizeFixedDays(extra.fixedDays),emp.id,code);
         renderShiftDateCalendar(`exc-${emp.id}-${safe}`,normalizeFixedDates(extra.fixedDates),'toggleEmpExtraShiftDate',emp.id,`Zmiana ${code}`,code);
       });
-      if(document.getElementById(calId)) renderCalendar(calId,s.daysOff||[],'toggleEmpDayOff',emp.id); 
+      if(document.getElementById(calId)) renderCalendar(calId,selectedDaysForMode(s),'toggleEmpDayOff',emp.id,normalizeDayMode(s.daySelectMode)); 
     },0);
     return `<div class="emp-item${mn?' manual-mode':''}">
       <div class="emp-header">
@@ -1418,6 +1466,13 @@ function renderEmployees(){
           <div class="shift-type-group">${extraButtons || '<span style="color:var(--text2);font-size:.8rem">Brak wlasnych zmian do wyboru.</span>'}</div>
           ${extraBlocks ? `<div class="extra-shift-grid">${extraBlocks}</div>` : '<div style="color:var(--text2);font-size:.78rem;margin-top:8px">Wybierz np. 7, 8 albo 19, aby pokazac osobny kalendarz dla tej opcji.</div>'}
         </div>
+        <div>
+          <label>Tryb kalendarza</label>
+          <div class="avail-group">
+            <button class="avail-btn ${normalizeDayMode(s.daySelectMode)==='off'?'sel-always':''}" type="button" onclick="setEmpDayMode(${emp.id},'off')">Dni wolne</button>
+            <button class="avail-btn ${normalizeDayMode(s.daySelectMode)==='available'?'sel-weekday':''}" type="button" onclick="setEmpDayMode(${emp.id},'available')">Dni dostępności</button>
+          </div>
+        </div>
       </div>
       <div class="calendar-picker" id="${fixedDateCalId}" style="display:${isFixedShift(st)?'block':'none'}"></div>
       <div class="calendar-picker" id="${calId}"></div>
@@ -1446,7 +1501,7 @@ function buildDefaultSchedule(year, month){
     employees.forEach(emp=>{
       const s=getMonthSetting(emp,key);
       emp.stats=stats[emp.id];
-      const off=(s.daysOff||[]).includes(d);
+      const off=isBlockedByDaySelection(s,d);
       if(s.manual){ result[emp.id][d]='X'; used.add(emp.id); return; }
       if(off){ result[emp.id][d]='U'; used.add(emp.id); return; }
       if(!isAvailableMonthly(emp,dow,key)){ result[emp.id][d]='X'; used.add(emp.id); return; }
@@ -1466,21 +1521,21 @@ function buildDefaultSchedule(year, month){
     });
     const activeDN=employees.filter(emp=>{
       const s=getMonthSetting(emp,key);
-      return !used.has(emp.id) && !s.manual && (s.shiftType||'DN')==='DN' && !(s.daysOff||[]).includes(d) && isAvailableMonthly(emp,dow,key) && canTakeMoreShifts(emp,key);
+      return !used.has(emp.id) && !s.manual && (s.shiftType||'DN')==='DN' && !isBlockedByDaySelection(s,d) && isAvailableMonthly(emp,dow,key) && canTakeMoreShifts(emp,key);
     });
     const activeOnlyN=employees.filter(emp=>{
       const s=getMonthSetting(emp,key);
       const fdays=normalizeFixedDays(s.fixedDays);
-      return !used.has(emp.id) && !s.manual && s.shiftType==='ONLY_N' && !(s.daysOff||[]).includes(d) && isAvailableMonthly(emp,dow,key) && fdays.includes(dow) && canTakeMoreShifts(emp,key);
+      return !used.has(emp.id) && !s.manual && s.shiftType==='ONLY_N' && !isBlockedByDaySelection(s,d) && isAvailableMonthly(emp,dow,key) && fdays.includes(dow) && canTakeMoreShifts(emp,key);
     });
     const activeOnlyD=employees.filter(emp=>{
       const s=getMonthSetting(emp,key);
       const fdays=normalizeFixedDays(s.fixedDays);
-      return !used.has(emp.id) && !s.manual && s.shiftType==='ONLY_D' && !(s.daysOff||[]).includes(d) && isAvailableMonthly(emp,dow,key) && fdays.includes(dow) && canTakeMoreShifts(emp,key);
+      return !used.has(emp.id) && !s.manual && s.shiftType==='ONLY_D' && !isBlockedByDaySelection(s,d) && isAvailableMonthly(emp,dow,key) && fdays.includes(dow) && canTakeMoreShifts(emp,key);
     });
     const backupCandidates=(shift)=>employees.filter(emp=>{
       const s=getMonthSetting(emp,key);
-      if(used.has(emp.id) || s.manual || (s.daysOff||[]).includes(d) || !isAvailableMonthly(emp,dow,key)) return false;
+      if(used.has(emp.id) || s.manual || isBlockedByDaySelection(s,d) || !isAvailableMonthly(emp,dow,key)) return false;
       if(!canTakeMoreShifts(emp,key)) return false;
       const st=s.shiftType||'DN';
       const fdays=normalizeFixedDays(s.fixedDays);
@@ -1581,9 +1636,12 @@ function syncCalendarDateFromEmployeePage(){
   document.getElementById('sel-month').value=m;
   document.getElementById('sel-year').value=y;
   newDaysOff=[];
+  newDayMode='off';
+  newAvailableDays=[];
   newFixedDatesByShift={};
   newExtraFixedShifts={};
   renderNewCalendar();
+  setNewDayMode('off');
   renderNewFixedDateCalendar();
   renderNewExtraShiftControls();
   renderEmployees();
@@ -1594,9 +1652,12 @@ function syncCalendarDateFromSchedulePage(){
   if(empMonth) empMonth.value=document.getElementById('sel-month').value;
   if(empYear) empYear.value=document.getElementById('sel-year').value;
   newDaysOff=[];
+  newDayMode='off';
+  newAvailableDays=[];
   newFixedDatesByShift={};
   newExtraFixedShifts={};
   renderNewCalendar();
+  setNewDayMode('off');
   renderNewFixedDateCalendar();
   renderNewExtraShiftControls();
   renderEmployees();
@@ -1611,7 +1672,7 @@ function autoResetForNewMonth(){
     employees.forEach(emp=>{
       if(!emp.monthSettings) emp.monthSettings={};
       if(!emp.monthSettings[key]){
-        emp.monthSettings[key]={daysOff:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
+        emp.monthSettings[key]={daysOff:[],daySelectMode:'off',availableDays:[],availability:'always',shiftType:'DN',fixedDays:defaultFixedDays(),fixedDates:[],extraFixedShifts:{},manual:false,maxShifts:''};
       }
     });
     saveEmp();
