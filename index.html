@@ -402,6 +402,7 @@ function baseShiftClass(code){
   if(code==='DN') return 'sel-DN';
   return 'sel-CUSTOM';
 }
+function jsArg(v){ return JSON.stringify(String(v)).replace(/'/g,'\\u0027'); }
 function escapeHtml(v){ return String(v).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
 
 function selectAvail(btn,groupId){
@@ -464,14 +465,14 @@ function renderWeekdayButtons(containerId, selectedDays, onClickName, empId=null
 function renderExtraWeekdayButtons(containerId, selectedDays, empId, code){
   const box=document.getElementById(containerId);
   if(!box) return;
-  const codeArg=JSON.stringify(code);
-  box.innerHTML=WEEKDAY_ORDER.map(d=>`<button class="day-btn ${selectedDays.includes(d)?'active':''}" onclick="toggleEmpExtraShiftDay(${empId},${codeArg},${d})">${WEEKDAY_NAMES[d]}</button>`).join('');
+  const codeArg=jsArg(code);
+  box.innerHTML=WEEKDAY_ORDER.map(d=>`<button type="button" class="day-btn ${selectedDays.includes(d)?'active':''}" data-emp-extra-day-id="${empId}" data-emp-extra-day-code="${escapeHtml(code)}" data-emp-extra-day-dow="${d}">${WEEKDAY_NAMES[d]}</button>`).join('');
 }
 function renderNewExtraWeekdayButtons(containerId, selectedDays, code){
   const box=document.getElementById(containerId);
   if(!box) return;
-  const codeArg=JSON.stringify(code);
-  box.innerHTML=WEEKDAY_ORDER.map(d=>`<button class="day-btn ${selectedDays.includes(d)?'active':''}" onclick="toggleNewExtraShiftDay(${codeArg},${d})">${WEEKDAY_NAMES[d]}</button>`).join('');
+  const codeArg=jsArg(code);
+  box.innerHTML=WEEKDAY_ORDER.map(d=>`<button type="button" class="day-btn ${selectedDays.includes(d)?'active':''}" data-new-extra-day-code="${escapeHtml(code)}" data-new-extra-day-dow="${d}">${WEEKDAY_NAMES[d]}</button>`).join('');
 }
 function ensureNewExtraShift(code){
   if(!newExtraFixedShifts || typeof newExtraFixedShifts!=='object' || Array.isArray(newExtraFixedShifts)) newExtraFixedShifts={};
@@ -516,7 +517,7 @@ function renderNewExtraShiftControls(){
   btnBox.innerHTML=codes.map(code=>{
     const active=!!newExtraFixedShifts[code];
     const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
-    return `<button type="button" class="stype-btn ${active?cls:''}" onclick="toggleNewExtraShift(${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+    return `<button type="button" class="stype-btn ${active?cls:''}" data-new-extra="${escapeHtml(code)}">${escapeHtml(code)}</button>`;
   }).join('') || '<span style="color:var(--text2);font-size:.8rem">Brak wlasnych zmian do wyboru.</span>';
   const selectedCodes=Object.keys(normalizeExtraFixedShifts(newExtraFixedShifts));
   if(!selectedCodes.length){
@@ -599,8 +600,12 @@ function renderShiftDateCalendar(containerId, selectedDays, callbackName, empId=
   for(let i=0;i<mondayIndex;i++) html+='<button class="cal-day empty"></button>';
   for(let d=1;d<=days;d++){
     const on=selected.includes(d);
-    const args=[empId, extraArg, d].filter(v=>v!==null).map(v=>typeof v==='string'?JSON.stringify(v):v).join(',');
-    html+=`<button class="cal-day ${on?'shift-date':''}" onclick="${callbackName}(${args})">${d}</button>`;
+      const args=[empId, extraArg, d].filter(v=>v!==null).map(v=>typeof v==='string'?jsArg(v):v).join(',');
+      let dataAttrs='';
+      if(callbackName==='toggleNewExtraShiftDate' && extraArg!==null) dataAttrs=` data-new-extra-date-code="${escapeHtml(extraArg)}" data-new-extra-date-day="${d}"`;
+      if(callbackName==='toggleEmpExtraShiftDate' && empId!==null && extraArg!==null) dataAttrs=` data-emp-extra-date-id="${empId}" data-emp-extra-date-code="${escapeHtml(extraArg)}" data-emp-extra-date-day="${d}"`;
+      const clickAttr=dataAttrs ? '' : ` onclick='${callbackName}(${args})'`;
+      html+=`<button type="button" class="cal-day ${on?'shift-date':''}"${dataAttrs}${clickAttr}>${d}</button>`;
   }
   html+='</div><div class="cal-help">Żółte dni oznaczają konkretne daty, w które ma wejść stała/własna zmiana. Jeśli nic nie zaznaczysz, działa wybór dni tygodnia powyżej.</div>';
   box.innerHTML=html;
@@ -613,7 +618,7 @@ function renderShiftTypeButtons(){
     if(isFixedShift(code)){
       const active=!!newExtraFixedShifts[code];
       const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
-      return `<button type="button" class="stype-btn ${active?cls:''}" data-val="${code}" onclick="toggleNewExtraShift(${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+      return `<button type="button" class="stype-btn ${active?cls:''}" data-val="${escapeHtml(code)}" data-new-extra="${escapeHtml(code)}">${escapeHtml(code)}</button>`;
     }
     return `<button type="button" class="stype-btn ${newStype===code?baseShiftClass(code):''}" data-val="${code}" onclick="selectStype(this,'new-stype-group')">${baseShiftLabel(code)}</button>`;
   }).join('');
@@ -1265,7 +1270,7 @@ function renderEmployees(){
       if(isFixedShift(code)){
         const active=!!extraFixedShifts[code];
         const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
-        return `<button type="button" class="stype-btn ${active?cls:''}" onclick="toggleEmpExtraShift(${emp.id},${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+        return `<button type="button" class="stype-btn ${active?cls:''}" data-emp-extra-id="${emp.id}" data-emp-extra-code="${escapeHtml(code)}">${escapeHtml(code)}</button>`;
       }
       const sel=st===code;
       return `<button type="button" class="stype-btn ${sel?baseShiftClass(code):''}" data-val="${code}" onclick="setEmpStype(${emp.id},'${code}')">${baseShiftLabel(code)}</button>`;
@@ -1273,7 +1278,7 @@ function renderEmployees(){
     const extraButtons=extraCodes.map(code=>{
       const active=!!extraFixedShifts[code];
       const cls=['8','7','19'].includes(code)?'sel-'+code:'sel-CUSTOM';
-      return `<button type="button" class="stype-btn ${active?cls:''}" onclick="toggleEmpExtraShift(${emp.id},${JSON.stringify(code)})">${escapeHtml(code)}</button>`;
+      return `<button type="button" class="stype-btn ${active?cls:''}" data-emp-extra-id="${emp.id}" data-emp-extra-code="${escapeHtml(code)}">${escapeHtml(code)}</button>`;
     }).join('');
     const extraBlocks=Object.keys(extraFixedShifts).map(code=>{
       const weekdayId=`exw-${emp.id}-${String(code).replace(/[^A-Za-z0-9_]/g,'_')}`;
@@ -1532,6 +1537,40 @@ function autoResetForNewMonth(){
     lastMonthKey=key;
   }
 }
+
+document.addEventListener('click', function(e){
+  const target=e.target.closest('button');
+  if(!target) return;
+  if(target.dataset.newExtra){
+    e.preventDefault();
+    toggleNewExtraShift(target.dataset.newExtra);
+    return;
+  }
+  if(target.dataset.empExtraId && target.dataset.empExtraCode){
+    e.preventDefault();
+    toggleEmpExtraShift(parseInt(target.dataset.empExtraId,10), target.dataset.empExtraCode);
+    return;
+  }
+  if(target.dataset.newExtraDayCode && target.dataset.newExtraDayDow){
+    e.preventDefault();
+    toggleNewExtraShiftDay(target.dataset.newExtraDayCode, parseInt(target.dataset.newExtraDayDow,10));
+    return;
+  }
+  if(target.dataset.empExtraDayId && target.dataset.empExtraDayCode && target.dataset.empExtraDayDow){
+    e.preventDefault();
+    toggleEmpExtraShiftDay(parseInt(target.dataset.empExtraDayId,10), target.dataset.empExtraDayCode, parseInt(target.dataset.empExtraDayDow,10));
+    return;
+  }
+  if(target.dataset.newExtraDateCode && target.dataset.newExtraDateDay){
+    e.preventDefault();
+    toggleNewExtraShiftDate(target.dataset.newExtraDateCode, parseInt(target.dataset.newExtraDateDay,10));
+    return;
+  }
+  if(target.dataset.empExtraDateId && target.dataset.empExtraDateCode && target.dataset.empExtraDateDay){
+    e.preventDefault();
+    toggleEmpExtraShiftDate(parseInt(target.dataset.empExtraDateId,10), target.dataset.empExtraDateCode, parseInt(target.dataset.empExtraDateDay,10));
+  }
+});
 
 function init(){
   pruneOldHistory();
