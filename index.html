@@ -1108,6 +1108,84 @@ ${Array.from({length:days},()=>'<Column ss:Width="17"/>').join('')}
   a.download=`Grafik_${monthName}_${year}.xls`;
   document.body.appendChild(a);
   a.click();
+setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},0);
+}
+
+function exportExcel(){
+  if(currentMonth===null){alert('Najpierw wygeneruj grafik!');return;}
+  const month=currentMonth, year=currentYear, days=getDaysInMonth(year,month), key=`${year}-${month}`, monthName=MONTHS_PL[month].toUpperCase();
+  const xmlEscape=(v)=>String(v??'').replace(/[<>&"']/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[m]));
+  const dowLetter=(dow)=>({1:'P',2:'W',3:'Ś',4:'C',5:'P',6:'S',0:'N'}[dow]||'');
+  const monthShort=MONTHS_PL[month].slice(0,3).toLowerCase();
+  const legendCodes=[...new Set(['7','9','8','1','19','5','13',...Object.keys(shifts||{})])].filter(code=>shifts[code]);
+  const border='<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#000000"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#000000"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#000000"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#000000"/></Borders>';
+  const font=(color='#000000',bold=false,size=11)=>`<Font ss:FontName="Calibri" ss:Size="${size}" ss:Color="${color}"${bold?' ss:Bold="1"':''}/>`;
+  const fill=(color)=>`<Interior ss:Color="${color}" ss:Pattern="Solid"/>`;
+  const style=(id,color='#FFFFFF',align='Center',bold=false,fontColor='#000000',size=11,borders=true)=>`<Style ss:ID="${id}"><Alignment ss:Horizontal="${align}" ss:Vertical="Center"/>${font(fontColor,bold,size)}${borders?border:''}${fill(color)}</Style>`;
+  const cellStyle=(value,dow)=>{
+    if(value==='X' || value==='U') return 'blackCell';
+    if(isWeekend(dow)) return 'weekendCell';
+    return 'workCell';
+  };
+  const cell=(data,styleId='Default',type='String',merge=0)=>`<Cell ss:StyleID="${styleId}"${merge?` ss:MergeAcross="${merge}"`:''}><Data ss:Type="${type}">${xmlEscape(data)}</Data></Cell>`;
+  let xml=`<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+<Style ss:ID="Default" ss:Name="Normal">${font('#000000',false,11)}</Style>
+${style('title','#FFFFFF','Center',false,'#000000',11,false)}
+${style('nameCell','#FFFFFF','Left',false)}
+${style('headCell','#FFFFFF','Center',false)}
+${style('weekendCell','#70AD47','Center',false)}
+${style('workCell','#FFFFFF','Center',false)}
+${style('blackCell','#1F1F1F','Center',false,'#000000')}
+${style('gapCell','#FFFFFF','Center',false,'#000000',11,false)}
+${style('legend','#FFFFFF','Left',false,'#000000',11,false)}
+</Styles>
+<Worksheet ss:Name="Grafik">
+<Table ss:DefaultRowHeight="17">
+<Column ss:Width="72"/>
+${Array.from({length:days},()=>'<Column ss:Width="24"/>').join('')}`;
+  xml+=`<Row ss:Height="22">${cell('','gapCell')}${cell(`GRAFIK ${monthName} ${year}`,'title','String',days-1)}</Row>`;
+  xml+='<Row ss:Height="18">'+cell(`${monthShort}-${String(year).slice(-2)}`,'headCell');
+  for(let d=1;d<=days;d++){
+    const dow=getDow(year,month,d);
+    xml+=cell(d,isWeekend(dow)?'weekendCell':'headCell','Number');
+  }
+  xml+='</Row>';
+  employees.forEach(emp=>{
+    if(emp.separatorBefore) xml+=`<Row ss:Height="13">${cell('', 'gapCell', 'String', days)}</Row>`;
+    xml+='<Row ss:Height="15">'+cell(emp.name,'nameCell');
+    for(let d=1;d<=days;d++){
+      const dow=getDow(year,month,d);
+      const v=scheduleData[key]?.[emp.id]?.[d] || '';
+      xml+=cell(v,cellStyle(v,dow));
+    }
+    xml+='</Row>';
+  });
+  xml+='<Row ss:Height="15">'+cell('','headCell');
+  for(let d=1;d<=days;d++){
+    const dow=getDow(year,month,d);
+    xml+=cell(dowLetter(dow),isWeekend(dow)?'weekendCell':'headCell');
+  }
+  xml+='</Row>';
+  xml+='<Row ss:Height="22"></Row>';
+  legendCodes.forEach(code=>{
+    xml+=`<Row ss:Height="18">${cell(`${code}= ${shifts[code].from}- ${shifts[code].to}`,'legend','String',3)}</Row>`;
+  });
+  xml+=`</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+<PageSetup><Layout x:Orientation="Landscape"/><PageMargins x:Bottom="0.35" x:Left="0.2" x:Right="0.2" x:Top="0.25"/></PageSetup>
+<Print><FitWidth>1</FitWidth><FitHeight>1</FitHeight><ValidPrinterInfo/></Print>
+</WorksheetOptions></Worksheet></Workbook>`;
+  const blob=new Blob([xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Grafik_${monthName}_${year}.xls`;
+  document.body.appendChild(a);
+  a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},0);
 }
 
