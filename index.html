@@ -104,6 +104,10 @@
 
   .shift-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .shift-label{display:inline-flex;align-items:center;justify-content:center;width:42px;height:36px;border-radius:8px;font-weight:900;font-size:.92rem}
+  .rules-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
+  .rule-box{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
+  .rule-box input,.rule-box select{width:100%;min-width:0}
+  .rule-days{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
   .info-box{background:#f6f9fd;border:1px solid rgba(215,25,32,.28);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;color:var(--text2);line-height:1.7}
   .info-box strong{color:var(--text)}
   .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
@@ -140,7 +144,7 @@
     <div class="card">
       <h2>➕ Dodaj pracownika</h2>
       <div class="info-box">
-        Generator nie trzyma już sztywnego cyklu <strong>D/N/X/X</strong>. Układa grafik tak, żeby każdego dnia były <strong>2 osoby na D</strong> i <strong>2 osoby na N</strong>, a zmiany rozłożyły się możliwie równo między pracowników. Dla pracowników <strong>D/N</strong> pilnuje maksymalnie dwóch nocek pod rząd; wyjątkiem są osoby ustawione jako <strong>Tylko N</strong>.<br>
+        Generator nie trzyma już sztywnego cyklu <strong>D/N/X/X</strong>. Układa grafik według reguł z zakładki <strong>Zmiany</strong>, a zmiany rozkłada możliwie równo między pracowników. Dla pracowników <strong>D/N</strong> pilnuje maksymalnie dwóch nocek pod rząd; wyjątkiem są osoby ustawione jako <strong>Tylko N</strong>.<br>
         Dla zwykłego <strong>D/N</strong> pracownik jest dostępny we wszystkie dni. Dni tygodnia ograniczają tylko <strong>Tylko D</strong>, <strong>Tylko N</strong> oraz zmiany <strong>8 / 7 / 19 / własne</strong>. Dni wolne klikasz w kalendarzu.
       </div>
       <div class="form-row">
@@ -241,12 +245,11 @@
     <div class="card">
       <h2>📖 Zasady obsady</h2>
       <div class="info-box">
-        <strong>Pn–Czw:</strong> 2 osoby na D + 2 osoby na N<br>
-        <strong>Pt–Nd:</strong> 2 osoby na D + 2 osoby na N + 1 osoba na zmianę 7<br>
+        Ustaw tutaj, ile osób generator ma przydzielać na dany dzień. Standardowo zostaje tak jak dotąd: <strong>2 osoby na D</strong>, <strong>2 osoby na N</strong> oraz <strong>1 dodatkowa zmiana 7</strong> w Pt-Nd.<br>
         Grafik nie trzyma sztywnego cyklu D/N/X/X. Najważniejsze zasady to obsada zmian, brak zmiany <strong>D</strong> od razu po <strong>N</strong> i maksymalnie dwie <strong>N</strong> pod rząd dla pracowników <strong>D/N</strong>. Jeśli jest wybór, generator zostawia dwa wolne po <strong>N</strong>.<br>
-        Zmiana <strong>7</strong> jest dodawana automatycznie tylko Pt–Nd. Jeśli ustawisz pracownikowi typ <strong>7</strong> i zaznaczysz dni, może dostać ją także poza weekendem.<br>
         Zmiany stałe i własne są dodawane tylko w wybrane dni tygodnia danego pracownika.
       </div>
+      <div class="rules-grid" id="rules-grid"></div>
       <div class="legend" id="legend-dynamic"></div>
     </div>
   </div>
@@ -306,12 +309,15 @@ let shifts       = JSON.parse(localStorage.getItem('grafik_shifts5') || 'null') 
 shifts['8']=shifts['8'] || {code:'8', from:'8:00', to:'16:00', color:'#4fc3f7'};
 shifts['7']=shifts['7'] || {code:'7', from:'7:00', to:'15:00', color:'#a5d6a7'};
 shifts['19']=shifts['19'] || {code:'19', from:'19:00', to:'1:00', color:'#ff9a6c'};
+const DEFAULT_RULES={weekdayD:2,weekdayN:2,weekendD:2,weekendN:2,extraShift:'7',extraCount:1,extraDays:[5,6,0]};
+let scheduleRules=normalizeScheduleRules(JSON.parse(localStorage.getItem('grafik_rules5') || 'null'));
 let currentMonth=null, currentYear=null;
 let newAvail='always', newStype='DN', newManual=false, newDaysOff=[], newDayMode='off', newAvailableDays=[], newFixedDays=defaultFixedDays(), newFixedDatesByShift={}, newExtraFixedShifts={}, newMaxShifts='';
 
 function saveEmp(){ localStorage.setItem('grafik_emp5', JSON.stringify(employees)); }
 function saveSched(){ localStorage.setItem('grafik_sched5', JSON.stringify(scheduleData)); }
 function saveShiftStore(){ localStorage.setItem('grafik_shifts5', JSON.stringify(shifts)); }
+function saveRules(){ localStorage.setItem('grafik_rules5', JSON.stringify(scheduleRules)); }
 
 const DAYS_PL=['Nd','Pn','Wt','Śr','Cz','Pt','Sb'];
 const MONTHS_PL=['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
@@ -420,6 +426,69 @@ function baseShiftClass(code){
 }
 function jsArg(v){ return JSON.stringify(String(v)).replace(/'/g,'\\u0027'); }
 function escapeHtml(v){ return String(v).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
+function positiveInt(value,fallback=0){
+  const n=parseInt(value,10);
+  return Number.isFinite(n) && n>=0 ? Math.min(n,10) : fallback;
+}
+function normalizeScheduleRules(rules){
+  const r=rules && typeof rules==='object' ? rules : {};
+  const validDays=[1,2,3,4,5,6,0];
+  const rawExtraDays=Array.isArray(r.extraDays) ? r.extraDays : DEFAULT_RULES.extraDays;
+  const extraDays=rawExtraDays.map(x=>parseInt(x,10)).filter(x=>validDays.includes(x));
+  return {
+    weekdayD:positiveInt(r.weekdayD,DEFAULT_RULES.weekdayD),
+    weekdayN:positiveInt(r.weekdayN,DEFAULT_RULES.weekdayN),
+    weekendD:positiveInt(r.weekendD,DEFAULT_RULES.weekendD),
+    weekendN:positiveInt(r.weekendN,DEFAULT_RULES.weekendN),
+    extraShift:String(r.extraShift || DEFAULT_RULES.extraShift),
+    extraCount:positiveInt(r.extraCount,DEFAULT_RULES.extraCount),
+    extraDays:[...new Set(extraDays)]
+  };
+}
+function getDayRules(dow){
+  const friToSun=isFriSatSun(dow);
+  return {
+    D: friToSun ? scheduleRules.weekendD : scheduleRules.weekdayD,
+    N: friToSun ? scheduleRules.weekendN : scheduleRules.weekdayN,
+    extraShift: scheduleRules.extraShift || '7',
+    extraCount: scheduleRules.extraDays.includes(dow) ? scheduleRules.extraCount : 0
+  };
+}
+function setScheduleRule(field,value){
+  if(['weekdayD','weekdayN','weekendD','weekendN','extraCount'].includes(field)) scheduleRules[field]=positiveInt(value,DEFAULT_RULES[field]);
+  if(field==='extraShift') scheduleRules.extraShift=String(value || '7');
+  scheduleRules=normalizeScheduleRules(scheduleRules);
+  saveRules();
+  renderRulesUI();
+  refreshScheduleCounters();
+}
+function toggleRuleExtraDay(dow){
+  toggleArrayValue(scheduleRules.extraDays,dow);
+  scheduleRules=normalizeScheduleRules(scheduleRules);
+  saveRules();
+  renderRulesUI();
+  refreshScheduleCounters();
+}
+function renderRulesUI(){
+  const box=document.getElementById('rules-grid');
+  if(!box) return;
+  const shiftOptions=getFixedShiftCodes().map(code=>`<option value="${escapeHtml(code)}" ${scheduleRules.extraShift===code?'selected':''}>${escapeHtml(code)}</option>`).join('');
+  const dayButtons=WEEKDAY_ORDER.map(dow=>`<button type="button" class="day-btn ${scheduleRules.extraDays.includes(dow)?'active':''}" onclick="toggleRuleExtraDay(${dow})">${WEEKDAY_NAMES[dow]}</button>`).join('');
+  box.innerHTML=`
+    <div class="rule-box"><label>Pn-Czw: liczba D</label><input type="number" min="0" max="10" value="${scheduleRules.weekdayD}" onchange="setScheduleRule('weekdayD',this.value)"></div>
+    <div class="rule-box"><label>Pn-Czw: liczba N</label><input type="number" min="0" max="10" value="${scheduleRules.weekdayN}" onchange="setScheduleRule('weekdayN',this.value)"></div>
+    <div class="rule-box"><label>Pt-Nd: liczba D</label><input type="number" min="0" max="10" value="${scheduleRules.weekendD}" onchange="setScheduleRule('weekendD',this.value)"></div>
+    <div class="rule-box"><label>Pt-Nd: liczba N</label><input type="number" min="0" max="10" value="${scheduleRules.weekendN}" onchange="setScheduleRule('weekendN',this.value)"></div>
+    <div class="rule-box"><label>Dodatkowa zmiana</label><select onchange="setScheduleRule('extraShift',this.value)">${shiftOptions}</select></div>
+    <div class="rule-box"><label>Ile osób na dodatkową</label><input type="number" min="0" max="10" value="${scheduleRules.extraCount}" onchange="setScheduleRule('extraCount',this.value)"></div>
+    <div class="rule-box" style="grid-column:1/-1"><label>Dni dodatkowej zmiany</label><div class="rule-days">${dayButtons}</div></div>`;
+}
+function refreshScheduleCounters(){
+  if(currentMonth===null || currentYear===null) return;
+  const key=`${currentYear}-${currentMonth}`;
+  const days=getDaysInMonth(currentYear,currentMonth);
+  if(scheduleData[key]) renderScheduleTable(currentYear,currentMonth,days);
+}
 
 function selectAvail(btn,groupId){
   document.getElementById(groupId).querySelectorAll('.avail-btn').forEach(b=>b.classList.remove('sel-always','sel-weekday','sel-weekend'));
@@ -513,7 +582,7 @@ function toggleNewExtraShift(code){
 }
 function refreshNewExtraShiftUI(){
   renderShiftTypeButtons();
-  renderNewExtraShiftControls();
+  renderNewExtraShiftControls(); renderRulesUI();
 }
 function toggleNewExtraShiftDay(code,dow){
   const extra=ensureNewExtraShift(code);
@@ -754,12 +823,13 @@ function addCustomShift(){
   if(fromInput) fromInput.value='9:00';
   if(toInput) toInput.value='17:00';
   if(colorInput) colorInput.value='#d71920';
-  saveShiftStore(); renderShiftsUI(); renderShiftTypeButtons(); renderNewExtraShiftControls(); renderEmployees(); updateDynamicLegends();
+  saveShiftStore(); renderShiftsUI(); renderShiftTypeButtons(); renderNewExtraShiftControls(); renderEmployees(); updateDynamicLegends(); renderRulesUI();
 }
 function deleteCustomShift(code){
   if(['8','7','19'].includes(code)){alert('Tych podstawowych zmian nie usuwam, możesz zmienić ich godziny.');return;}
   if(!confirm('Usunąć zmianę '+code+'?'))return;
   delete shifts[code];
+  if(scheduleRules.extraShift===code) scheduleRules.extraShift='7';
   if(newExtraFixedShifts && newExtraFixedShifts[code]) delete newExtraFixedShifts[code];
   employees.forEach(e=>{
     if(e.shiftType===code)e.shiftType='DN';
@@ -769,7 +839,7 @@ function deleteCustomShift(code){
       if(s.extraFixedShifts && s.extraFixedShifts[code]) delete s.extraFixedShifts[code];
     });
   });
-  saveShiftStore(); saveEmp(); renderShiftsUI(); renderShiftTypeButtons(); renderNewExtraShiftControls(); renderEmployees(); updateDynamicLegends();
+  saveShiftStore(); saveRules(); saveEmp(); renderShiftsUI(); renderShiftTypeButtons(); renderNewExtraShiftControls(); renderEmployees(); updateDynamicLegends(); renderRulesUI();
 }
 function renderShiftsUI(){
   const box=document.getElementById('custom-shifts-list');
@@ -849,8 +919,10 @@ function pickBalanced(candidates, key, dayAssignments, preferNoPrevNight=false){
 function addStat(emp,shift){
   if(!emp.stats) emp.stats={D:0,N:0,'7':0,total:0};
   if(!emp.stats[shift]) emp.stats[shift]=0;
-  if(['D','N','7'].includes(shift)) emp.stats[shift]++;
-  if(shift!=='X'&&shift!=='U') emp.stats.total++;
+  if(shift!=='X'&&shift!=='U'){
+    emp.stats[shift]++;
+    emp.stats.total++;
+  }
 }
 function getMaxShifts(emp, monthKey=null){
   const raw=monthKey ? getMonthSetting(emp,monthKey).maxShifts : emp.maxShifts;
@@ -892,6 +964,7 @@ function buildDefaultSchedule(year, month){
 
   for(let d=1; d<=days; d++){
     const dow=getDow(year,month,d);
+    const dayRule=getDayRules(dow);
     const used=new Set();
     const prev={}; employees.forEach(e=>{ prev[e.id]=d>1?result[e.id][d-1]:''; });
     const prev2={}; employees.forEach(e=>{ prev2[e.id]=d>2?result[e.id][d-2]:''; });
@@ -996,9 +1069,10 @@ function renderScheduleTable(year,month,days){
     html+='</tr>';
   });
 
-  html+=counterRowHtml(key,days,'D','D (cel: 2)',d=>2);
-  html+=counterRowHtml(key,days,'N','N (cel: 2)',d=>2);
-  html+=counterRowHtml(key,days,'7','7 (Pt/Sb/Nd)',d=>isFriSatSun(getDow(year,month,d))?1:0);
+  const extraLabel=`${scheduleRules.extraShift} (dodatkowa)`;
+  html+=counterRowHtml(key,days,'D','D (cel)',d=>getDayRules(getDow(year,month,d)).D);
+  html+=counterRowHtml(key,days,'N','N (cel)',d=>getDayRules(getDow(year,month,d)).N);
+  html+=counterRowHtml(key,days,scheduleRules.extraShift,extraLabel,d=>getDayRules(getDow(year,month,d)).extraCount);
   html+='</tbody>';
   table.innerHTML=html;
 }
@@ -1022,10 +1096,13 @@ function setShift(key,empId,day,val){
 }
 function updateCounters(key,days){
   const rows=document.querySelectorAll('#sched-table tbody tr.counter-row');
-  ['D','N','7'].forEach((shift,idx)=>{
+  const counterShifts=['D','N',scheduleRules.extraShift];
+  counterShifts.forEach((shift,idx)=>{
+    if(!rows[idx]) return;
     const cells=rows[idx].querySelectorAll('td');
     for(let d=1;d<=days;d++){
-      const need=shift==='7'?(isFriSatSun(getDow(currentYear,currentMonth,d))?1:0):2;
+      const rules=getDayRules(getDow(currentYear,currentMonth,d));
+      const need=shift==='D' ? rules.D : (shift==='N' ? rules.N : rules.extraCount);
       const cnt=employees.filter(e=>!getMonthSetting(e,key).manual&&scheduleData[key]?.[e.id]?.[d]===shift).length;
       if(need>0){ cells[d].textContent=cnt; cells[d].className=cnt===need?'ok':'warn'; }
       else { cells[d].textContent=cnt>0?cnt:'—'; cells[d].className=''; }
@@ -1494,6 +1571,7 @@ function buildDefaultSchedule(year, month){
   employees.forEach(emp=>{ result[emp.id]={}; stats[emp.id]={D:0,N:0,'7':0,total:0}; ensureMonthSettings(emp,key); });
   for(let d=1; d<=days; d++){
     const dow=getDow(year,month,d);
+    const dayRule=getDayRules(dow);
     const used=new Set();
     const prev={}; employees.forEach(e=>{ prev[e.id]=d>1?result[e.id][d-1]:''; });
     const prev2={}; employees.forEach(e=>{ prev2[e.id]=d>2?result[e.id][d-2]:''; });
@@ -1548,20 +1626,23 @@ function buildDefaultSchedule(year, month){
       if(isFixedShift(st) && fdays.includes(dow)) return false;
       return true;
     });
-    for(let i=0;i<2;i++){
+    for(let i=0;i<dayRule.D;i++){
       const dayCandidates=[...activeOnlyD.filter(e=>!used.has(e.id) && ctx.prev[e.id]!=='N'), ...activeDN.filter(e=>!used.has(e.id) && ctx.prev[e.id]!=='N')];
       const emp=pickBalanced(dayCandidates,'D',ctx,false) || pickBalanced(backupCandidates('D'),'D',ctx,false);
       if(emp){ result[emp.id][d]='D'; used.add(emp.id); addStat(emp,'D'); }
     }
-    for(let i=0;i<2;i++){
+    for(let i=0;i<dayRule.N;i++){
       const nightCandidates=[...activeOnlyN.filter(e=>!used.has(e.id)), ...activeDN.filter(e=>!used.has(e.id) && !wouldBeThirdNight(e,ctx,key))];
       const emp=pickBalanced(nightCandidates,'N',ctx,false) || pickBalanced(backupCandidates('N'),'N',ctx,false);
       if(emp){ result[emp.id][d]='N'; used.add(emp.id); addStat(emp,'N'); }
     }
-    if(isFriSatSun(dow) && employees.filter(emp=>result[emp.id][d]==='7').length===0){
-      const fallbackDN=activeDN.filter(e=>!used.has(e.id));
-      const emp=pickBalanced(fallbackDN,'7',ctx,true) || pickBalanced(backupCandidates('7'),'7',ctx,true);
-      if(emp){ result[emp.id][d]='7'; used.add(emp.id); addStat(emp,'7'); }
+    if(dayRule.extraShift && dayRule.extraCount>0){
+      const currentExtra=employees.filter(emp=>result[emp.id][d]===dayRule.extraShift).length;
+      for(let i=currentExtra;i<dayRule.extraCount;i++){
+        const fallbackDN=activeDN.filter(e=>!used.has(e.id));
+        const emp=pickBalanced(fallbackDN,dayRule.extraShift,ctx,true) || pickBalanced(backupCandidates(dayRule.extraShift),dayRule.extraShift,ctx,true);
+        if(emp){ result[emp.id][d]=dayRule.extraShift; used.add(emp.id); addStat(emp,dayRule.extraShift); }
+      }
     }
     employees.forEach(emp=>{ if(result[emp.id][d]===undefined) result[emp.id][d]='X'; });
   }
@@ -1729,7 +1810,7 @@ function init(){
 
   // zapamiętaj aktualny miesiąc jako startowy, żeby nie resetowało od razu po uruchomieniu
   lastMonthKey=`${currentYearValue}-${currentMonthValue}`;
-  renderShiftsUI(); renderShiftTypeButtons(); renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay'); renderNewCalendar(); renderNewFixedDateCalendar(); renderNewExtraShiftControls(); renderEmployees(); updateDynamicLegends(); renderHistory();
+  renderShiftsUI(); renderShiftTypeButtons(); renderWeekdayButtons('new-fixed-days',newFixedDays,'toggleNewFixedDay'); renderNewCalendar(); renderNewFixedDateCalendar(); renderNewExtraShiftControls(); renderEmployees(); updateDynamicLegends(); renderRulesUI(); renderHistory();
 }
 init();
 </script>
