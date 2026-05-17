@@ -115,6 +115,10 @@
   .rule-days{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
   .info-box{background:#f6f9fd;border:1px solid rgba(215,25,32,.28);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;color:var(--text2);line-height:1.7}
   .info-box strong{color:var(--text)}
+  .help-list{display:grid;gap:12px}
+  .help-list h3{font-size:.95rem;color:var(--accent);margin-bottom:6px}
+  .help-list p{font-size:.86rem;color:var(--text2);line-height:1.65}
+  .help-list ul{padding-left:20px;color:var(--text2);font-size:.86rem;line-height:1.65}
   .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
   .legend-item{display:flex;align-items:center;gap:6px;font-size:.78rem}
   .legend-dot{width:14px;height:14px;border-radius:3px}
@@ -143,6 +147,7 @@
     <button class="tab" onclick="showPage('shifts',this)">⏰ Zmiany</button>
     <button class="tab" onclick="showPage('schedule',this)">📊 Grafik</button>
     <button class="tab" onclick="showPage('history',this);renderHistory()">🕘 Historia</button>
+    <button class="tab" onclick="showPage('help',this)">ℹ️ Instrukcja</button>
   </div>
 
   <div id="page-employees" class="page active">
@@ -299,6 +304,48 @@
         Każdy wygenerowany grafik zapisuje się tutaj osobno. Możesz wrócić do starszego grafiku, podejrzeć go albo usunąć z historii.
       </div>
       <div id="history-list"><div class="empty-state">Brak zapisanych grafików.</div></div>
+    </div>
+  </div>
+
+  <div id="page-help" class="page">
+    <div class="card">
+      <h2>ℹ️ Instrukcja</h2>
+      <div class="help-list">
+        <section>
+          <h3>1. Pracownicy</h3>
+          <p>W zakładce <strong>Pracownicy</strong> dodajesz osoby i ustawiasz ich zasady na wybrany miesiąc. Pracownicy zostają w aplikacji, ale dni wolne, dostępność, maksymalna liczba zmian i tryb ręczny są osobne dla każdego miesiąca.</p>
+          <ul>
+            <li><strong>D/N</strong> - normalny pracownik, może dostawać dni i noce.</li>
+            <li><strong>Tylko D</strong> - osoba dostaje tylko zmiany dzienne.</li>
+            <li><strong>Tylko N</strong> - osoba dostaje tylko noce i nie obowiązuje jej limit dwóch nocek pod rząd.</li>
+            <li><strong>7 / 8 / 19 / własne</strong> - dodatkowe zmiany, które możesz przypisać do wybranych dni tygodnia albo konkretnych dat.</li>
+          </ul>
+        </section>
+        <section>
+          <h3>2. Dni wolne i dostępność</h3>
+          <p>W trybie <strong>Dni wolne</strong> zaznaczasz dni, w które pracownik nie może pracować. W trybie <strong>Dni dostępności</strong> zaznaczasz tylko dni, w które pracownik może pracować, a reszta dni jest traktowana jako niedostępna.</p>
+        </section>
+        <section>
+          <h3>3. Zasady obsady</h3>
+          <p>W zakładce <strong>Zmiany</strong> ustawiasz reguły dla każdego dnia tygodnia osobno. Przy każdym dniu wpisujesz ile osób ma być na <strong>D</strong>, ile na <strong>N</strong> oraz ile osób ma dostać dodatkowe zmiany, np. <strong>1x 7</strong> i <strong>1x 19</strong> w tym samym dniu.</p>
+        </section>
+        <section>
+          <h3>4. Generowanie grafiku</h3>
+          <p>W zakładce <strong>Grafik</strong> wybierasz miesiąc i klikasz <strong>Generuj grafik</strong>. Generator stara się trzymać obsady, równo rozkładać zmiany, nie dawać D od razu po N i nie przekraczać dwóch nocek pod rząd dla zwykłych pracowników D/N.</p>
+        </section>
+        <section>
+          <h3>5. Ręczne poprawki</h3>
+          <p>Po wygenerowaniu możesz kliknąć komórkę w grafiku i ręcznie zmienić zmianę. Liczniki pod tabelą pokażą, czy danego dnia zgadza się liczba osób na D, N i dodatkowych zmianach.</p>
+        </section>
+        <section>
+          <h3>6. Excel i historia</h3>
+          <p><strong>Pobierz Excel</strong> eksportuje aktualny grafik w stylu tabeli do druku. Każdy wygenerowany grafik zapisuje się też w <strong>Historii</strong>, skąd można wrócić do wcześniejszych wersji albo usunąć stare zapisy.</p>
+        </section>
+        <section>
+          <h3>7. Dane i odświeżanie</h3>
+          <p>Dane zapisują się lokalnie w przeglądarce na danym urządzeniu. Po wrzuceniu nowej wersji na GitHub Pages aplikacja może pokazać komunikat o aktualizacji. Wtedy kliknij <strong>Odśwież</strong>.</p>
+        </section>
+      </div>
     </div>
   </div>
 </div>
