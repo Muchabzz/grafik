@@ -104,9 +104,13 @@
 
   .shift-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .shift-label{display:inline-flex;align-items:center;justify-content:center;width:42px;height:36px;border-radius:8px;font-weight:900;font-size:.92rem}
-  .rules-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
+  .rules-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
   .rule-box{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
   .rule-box input,.rule-box select{width:100%;min-width:0}
+  .rule-row{display:grid;grid-template-columns:70px repeat(4,minmax(86px,1fr));gap:8px;align-items:end;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
+  .rule-row strong{font-size:.9rem;color:var(--text)}
+  .rule-row label{font-size:.7rem}
+  .rule-row input,.rule-row select{width:100%;min-width:0;padding:7px 8px}
   .rule-days{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
   .info-box{background:#f6f9fd;border:1px solid rgba(215,25,32,.28);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;color:var(--text2);line-height:1.7}
   .info-box strong{color:var(--text)}
@@ -309,7 +313,17 @@ let shifts       = JSON.parse(localStorage.getItem('grafik_shifts5') || 'null') 
 shifts['8']=shifts['8'] || {code:'8', from:'8:00', to:'16:00', color:'#4fc3f7'};
 shifts['7']=shifts['7'] || {code:'7', from:'7:00', to:'15:00', color:'#a5d6a7'};
 shifts['19']=shifts['19'] || {code:'19', from:'19:00', to:'1:00', color:'#ff9a6c'};
-const DEFAULT_RULES={weekdayD:2,weekdayN:2,weekendD:2,weekendN:2,extraShift:'7',extraCount:1,extraDays:[5,6,0]};
+const DEFAULT_RULES={
+  byDay:{
+    1:{D:2,N:2,extraShift:'7',extraCount:0},
+    2:{D:2,N:2,extraShift:'7',extraCount:0},
+    3:{D:2,N:2,extraShift:'7',extraCount:0},
+    4:{D:2,N:2,extraShift:'7',extraCount:0},
+    5:{D:2,N:2,extraShift:'7',extraCount:1},
+    6:{D:2,N:2,extraShift:'7',extraCount:1},
+    0:{D:2,N:2,extraShift:'7',extraCount:1}
+  }
+};
 let scheduleRules=normalizeScheduleRules(JSON.parse(localStorage.getItem('grafik_rules5') || 'null'));
 let currentMonth=null, currentYear=null;
 let newAvail='always', newStype='DN', newManual=false, newDaysOff=[], newDayMode='off', newAvailableDays=[], newFixedDays=defaultFixedDays(), newFixedDatesByShift={}, newExtraFixedShifts={}, newMaxShifts='';
@@ -432,38 +446,36 @@ function positiveInt(value,fallback=0){
 }
 function normalizeScheduleRules(rules){
   const r=rules && typeof rules==='object' ? rules : {};
-  const validDays=[1,2,3,4,5,6,0];
-  const rawExtraDays=Array.isArray(r.extraDays) ? r.extraDays : DEFAULT_RULES.extraDays;
-  const extraDays=rawExtraDays.map(x=>parseInt(x,10)).filter(x=>validDays.includes(x));
-  return {
-    weekdayD:positiveInt(r.weekdayD,DEFAULT_RULES.weekdayD),
-    weekdayN:positiveInt(r.weekdayN,DEFAULT_RULES.weekdayN),
-    weekendD:positiveInt(r.weekendD,DEFAULT_RULES.weekendD),
-    weekendN:positiveInt(r.weekendN,DEFAULT_RULES.weekendN),
-    extraShift:String(r.extraShift || DEFAULT_RULES.extraShift),
-    extraCount:positiveInt(r.extraCount,DEFAULT_RULES.extraCount),
-    extraDays:[...new Set(extraDays)]
-  };
+  const byDay={};
+  [1,2,3,4,5,6,0].forEach(dow=>{
+    const oldExtraOn=Array.isArray(r.extraDays) ? r.extraDays.map(x=>parseInt(x,10)).includes(dow) : isFriSatSun(dow);
+    const oldFallback={
+      D:isFriSatSun(dow) ? r.weekendD : r.weekdayD,
+      N:isFriSatSun(dow) ? r.weekendN : r.weekdayN,
+      extraShift:r.extraShift,
+      extraCount:oldExtraOn ? r.extraCount : 0
+    };
+    const source=(r.byDay && r.byDay[dow]) || oldFallback;
+    const def=DEFAULT_RULES.byDay[dow];
+    byDay[dow]={
+      D:positiveInt(source.D,def.D),
+      N:positiveInt(source.N,def.N),
+      extraShift:String(source.extraShift || def.extraShift),
+      extraCount:positiveInt(source.extraCount,def.extraCount)
+    };
+  });
+  return {byDay};
 }
 function getDayRules(dow){
-  const friToSun=isFriSatSun(dow);
-  return {
-    D: friToSun ? scheduleRules.weekendD : scheduleRules.weekdayD,
-    N: friToSun ? scheduleRules.weekendN : scheduleRules.weekdayN,
-    extraShift: scheduleRules.extraShift || '7',
-    extraCount: scheduleRules.extraDays.includes(dow) ? scheduleRules.extraCount : 0
-  };
-}
-function setScheduleRule(field,value){
-  if(['weekdayD','weekdayN','weekendD','weekendN','extraCount'].includes(field)) scheduleRules[field]=positiveInt(value,DEFAULT_RULES[field]);
-  if(field==='extraShift') scheduleRules.extraShift=String(value || '7');
   scheduleRules=normalizeScheduleRules(scheduleRules);
-  saveRules();
-  renderRulesUI();
-  refreshScheduleCounters();
+  return scheduleRules.byDay[dow] || DEFAULT_RULES.byDay[dow] || DEFAULT_RULES.byDay[1];
 }
-function toggleRuleExtraDay(dow){
-  toggleArrayValue(scheduleRules.extraDays,dow);
+function setScheduleRule(dow,field,value){
+  dow=parseInt(dow,10);
+  scheduleRules=normalizeScheduleRules(scheduleRules);
+  if(!scheduleRules.byDay[dow]) scheduleRules.byDay[dow]={...DEFAULT_RULES.byDay[dow]};
+  if(['D','N','extraCount'].includes(field)) scheduleRules.byDay[dow][field]=positiveInt(value,DEFAULT_RULES.byDay[dow]?.[field] || 0);
+  if(field==='extraShift') scheduleRules.byDay[dow].extraShift=String(value || '7');
   scheduleRules=normalizeScheduleRules(scheduleRules);
   saveRules();
   renderRulesUI();
@@ -472,16 +484,18 @@ function toggleRuleExtraDay(dow){
 function renderRulesUI(){
   const box=document.getElementById('rules-grid');
   if(!box) return;
-  const shiftOptions=getFixedShiftCodes().map(code=>`<option value="${escapeHtml(code)}" ${scheduleRules.extraShift===code?'selected':''}>${escapeHtml(code)}</option>`).join('');
-  const dayButtons=WEEKDAY_ORDER.map(dow=>`<button type="button" class="day-btn ${scheduleRules.extraDays.includes(dow)?'active':''}" onclick="toggleRuleExtraDay(${dow})">${WEEKDAY_NAMES[dow]}</button>`).join('');
-  box.innerHTML=`
-    <div class="rule-box"><label>Pn-Czw: liczba D</label><input type="number" min="0" max="10" value="${scheduleRules.weekdayD}" onchange="setScheduleRule('weekdayD',this.value)"></div>
-    <div class="rule-box"><label>Pn-Czw: liczba N</label><input type="number" min="0" max="10" value="${scheduleRules.weekdayN}" onchange="setScheduleRule('weekdayN',this.value)"></div>
-    <div class="rule-box"><label>Pt-Nd: liczba D</label><input type="number" min="0" max="10" value="${scheduleRules.weekendD}" onchange="setScheduleRule('weekendD',this.value)"></div>
-    <div class="rule-box"><label>Pt-Nd: liczba N</label><input type="number" min="0" max="10" value="${scheduleRules.weekendN}" onchange="setScheduleRule('weekendN',this.value)"></div>
-    <div class="rule-box"><label>Dodatkowa zmiana</label><select onchange="setScheduleRule('extraShift',this.value)">${shiftOptions}</select></div>
-    <div class="rule-box"><label>Ile osób na dodatkową</label><input type="number" min="0" max="10" value="${scheduleRules.extraCount}" onchange="setScheduleRule('extraCount',this.value)"></div>
-    <div class="rule-box" style="grid-column:1/-1"><label>Dni dodatkowej zmiany</label><div class="rule-days">${dayButtons}</div></div>`;
+  scheduleRules=normalizeScheduleRules(scheduleRules);
+  box.innerHTML=WEEKDAY_ORDER.map(dow=>{
+    const r=getDayRules(dow);
+    const shiftOptions=getFixedShiftCodes().map(code=>`<option value="${escapeHtml(code)}" ${r.extraShift===code?'selected':''}>${escapeHtml(code)}</option>`).join('');
+    return `<div class="rule-row">
+      <strong>${WEEKDAY_NAMES[dow]}</strong>
+      <div><label>D</label><input type="number" min="0" max="10" value="${r.D}" onchange="setScheduleRule(${dow},'D',this.value)"></div>
+      <div><label>N</label><input type="number" min="0" max="10" value="${r.N}" onchange="setScheduleRule(${dow},'N',this.value)"></div>
+      <div><label>Połówka</label><select onchange="setScheduleRule(${dow},'extraShift',this.value)">${shiftOptions}</select></div>
+      <div><label>Ile</label><input type="number" min="0" max="10" value="${r.extraCount}" onchange="setScheduleRule(${dow},'extraCount',this.value)"></div>
+    </div>`;
+  }).join('');
 }
 function refreshScheduleCounters(){
   if(currentMonth===null || currentYear===null) return;
@@ -829,7 +843,8 @@ function deleteCustomShift(code){
   if(['8','7','19'].includes(code)){alert('Tych podstawowych zmian nie usuwam, możesz zmienić ich godziny.');return;}
   if(!confirm('Usunąć zmianę '+code+'?'))return;
   delete shifts[code];
-  if(scheduleRules.extraShift===code) scheduleRules.extraShift='7';
+  scheduleRules=normalizeScheduleRules(scheduleRules);
+  Object.values(scheduleRules.byDay).forEach(rule=>{ if(rule.extraShift===code) rule.extraShift='7'; });
   if(newExtraFixedShifts && newExtraFixedShifts[code]) delete newExtraFixedShifts[code];
   employees.forEach(e=>{
     if(e.shiftType===code)e.shiftType='DN';
@@ -1069,10 +1084,9 @@ function renderScheduleTable(year,month,days){
     html+='</tr>';
   });
 
-  const extraLabel=`${scheduleRules.extraShift} (dodatkowa)`;
   html+=counterRowHtml(key,days,'D','D (cel)',d=>getDayRules(getDow(year,month,d)).D);
   html+=counterRowHtml(key,days,'N','N (cel)',d=>getDayRules(getDow(year,month,d)).N);
-  html+=counterRowHtml(key,days,scheduleRules.extraShift,extraLabel,d=>getDayRules(getDow(year,month,d)).extraCount);
+  html+=counterRowHtml(key,days,d=>getDayRules(getDow(year,month,d)).extraShift,'Połówka',d=>getDayRules(getDow(year,month,d)).extraCount);
   html+='</tbody>';
   table.innerHTML=html;
 }
@@ -1080,7 +1094,8 @@ function counterRowHtml(key,days,shift,label,needFn){
   let html=`<tr class="counter-row" data-shift="${shift}"><td style="text-align:left;padding-left:8px;position:sticky;left:0;background:var(--surface)">${label}</td>`;
   for(let d=1;d<=days;d++){
     const need=needFn(d);
-    const cnt=employees.filter(e=>!getMonthSetting(e,key).manual&&scheduleData[key]?.[e.id]?.[d]===shift).length;
+    const dailyShift=typeof shift==='function' ? shift(d) : shift;
+    const cnt=employees.filter(e=>!getMonthSetting(e,key).manual&&scheduleData[key]?.[e.id]?.[d]===dailyShift).length;
     if(need>0) html+=`<td class="${cnt===need?'ok':'warn'}">${cnt}</td>`;
     else html+=`<td style="color:#333">${cnt>0?cnt:'—'}</td>`;
   }
@@ -1096,14 +1111,15 @@ function setShift(key,empId,day,val){
 }
 function updateCounters(key,days){
   const rows=document.querySelectorAll('#sched-table tbody tr.counter-row');
-  const counterShifts=['D','N',scheduleRules.extraShift];
+  const counterShifts=['D','N','EXTRA'];
   counterShifts.forEach((shift,idx)=>{
     if(!rows[idx]) return;
     const cells=rows[idx].querySelectorAll('td');
     for(let d=1;d<=days;d++){
       const rules=getDayRules(getDow(currentYear,currentMonth,d));
+      const dailyShift=shift==='EXTRA' ? rules.extraShift : shift;
       const need=shift==='D' ? rules.D : (shift==='N' ? rules.N : rules.extraCount);
-      const cnt=employees.filter(e=>!getMonthSetting(e,key).manual&&scheduleData[key]?.[e.id]?.[d]===shift).length;
+      const cnt=employees.filter(e=>!getMonthSetting(e,key).manual&&scheduleData[key]?.[e.id]?.[d]===dailyShift).length;
       if(need>0){ cells[d].textContent=cnt; cells[d].className=cnt===need?'ok':'warn'; }
       else { cells[d].textContent=cnt>0?cnt:'—'; cells[d].className=''; }
     }
